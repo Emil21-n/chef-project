@@ -1,0 +1,91 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+import type { ProductWithSection } from "@/entities/product/model/types";
+import type { AddToastState, CartItem } from "@/features/cart/model/types";
+
+export function useCart() {
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [addToast, setAddToast] = useState<AddToastState | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const addToCart = (product: ProductWithSection, quantity = 1) => {
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id);
+      if (existing) {
+        return current.map((item) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      }
+
+      return [...current, { ...product, quantity }];
+    });
+  };
+
+  const removeFromCart = (id: string, quantity = 1) => {
+    setCart((current) =>
+      current
+        .map((item) =>
+          item.id === id ? { ...item, quantity: item.quantity - quantity } : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  };
+
+  const showAddToast = (product: ProductWithSection, quantity: number) => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    setAddToast({ product, quantity, id: Date.now() });
+    toastTimerRef.current = window.setTimeout(() => {
+      setAddToast(null);
+    }, 5000);
+  };
+
+  const addProduct = (product: ProductWithSection, quantity = 1) => {
+    addToCart(product, quantity);
+    showAddToast(product, quantity);
+  };
+
+  const undoLastAddition = () => {
+    if (!addToast) return;
+
+    removeFromCart(addToast.product.id, addToast.quantity);
+    setAddToast(null);
+
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+  };
+
+  return {
+    addProduct,
+    addToast,
+    addToCart,
+    cart,
+    cartOpen,
+    clearCart: () => setCart([]),
+    closeCart: () => setCartOpen(false),
+    openCart: () => setCartOpen(true),
+    removeFromCart,
+    subtotal,
+    totalItems,
+    undoLastAddition
+  };
+}
