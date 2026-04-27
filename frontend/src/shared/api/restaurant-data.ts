@@ -11,11 +11,13 @@ type StrapiRecord = Record<string, unknown>;
 const DEFAULT_STRAPI_URL = "http://localhost:1337";
 
 function getStrapiUrl() {
-  return (
-    process.env.STRAPI_URL ||
-    process.env.NEXT_PUBLIC_STRAPI_URL ||
-    DEFAULT_STRAPI_URL
-  ).replace(/\/$/, "");
+  const strapiUrl = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL;
+
+  if (!strapiUrl && process.env.NODE_ENV === "production") {
+    throw new Error("Missing STRAPI_URL environment variable.");
+  }
+
+  return (strapiUrl || DEFAULT_STRAPI_URL).replace(/\/$/, "");
 }
 
 function unwrapRecord(value: unknown): StrapiRecord {
