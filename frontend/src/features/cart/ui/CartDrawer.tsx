@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ProductWithSection } from "@/entities/product/model/types";
 import type { CartItem } from "@/features/cart/model/types";
@@ -31,6 +31,16 @@ export function CartDrawer({
   const [orderSent, setOrderSent] = useState(false);
   const safeMinOrder = Math.max(minOrder, 1);
   const remaining = Math.max(safeMinOrder - subtotal, 0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   return (
     <div className={`cartLayer ${isOpen ? "isOpen" : ""}`} aria-hidden={!isOpen}>

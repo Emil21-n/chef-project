@@ -73,18 +73,74 @@ svg {
 }
 
 .siteHeader {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  position: fixed;
+  top: 8px;
+  right: max(16px, calc((100vw - 1180px) / 2));
+  left: max(16px, calc((100vw - 1180px) / 2));
+  z-index: 80;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 18px;
-  min-height: 76px;
-  padding: 12px max(16px, calc((100% - 1180px) / 2));
-  border-bottom: 1px solid var(--line);
-  background: rgba(11, 11, 16, 0.72);
-  backdrop-filter: blur(14px);
+  min-height: 64px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 42%, rgba(255, 0, 0, 0.08)),
+    rgba(8, 8, 12, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(24px) saturate(1.35);
+  isolation: isolate;
+  transition:
+    min-height 0.24s ease,
+    border-color 0.24s ease,
+    background 0.24s ease,
+    box-shadow 0.24s ease;
+}
+
+.siteHeader.isScrolled {
+  min-height: 64px;
+  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04) 42%, rgba(255, 0, 0, 0.1)),
+    rgba(8, 8, 12, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.07),
+    0 26px 66px rgba(0, 0, 0, 0.42);
+}
+
+.siteHeader.isMenuOpen {
+  border-color: rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05) 42%, rgba(255, 0, 0, 0.11)),
+    rgba(8, 8, 12, 0.72);
+}
+
+.mobileMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: block;
+  border: 0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 0.28s ease,
+    visibility 0.28s ease;
+}
+
+.mobileMenuBackdrop.isOpen {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
 }
 
 .brand {
@@ -92,14 +148,19 @@ svg {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  position: relative;
+  z-index: 4;
 }
 
 .brandLogoWrap {
   display: grid;
-  width: 54px;
-  height: 46px;
+  width: 44px;
+  height: 36px;
   place-items: center;
   overflow: hidden;
+  transition:
+    width 0.24s ease,
+    height 0.24s ease;
 }
 
 .brandLogo {
@@ -134,6 +195,8 @@ svg {
   display: flex;
   justify-content: center;
   gap: 8px;
+  position: relative;
+  z-index: 4;
 }
 
 .mobileNavOnly {
@@ -141,7 +204,10 @@ svg {
 }
 
 .topNav a {
-  padding: 9px 13px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.9rem;
@@ -159,6 +225,8 @@ svg {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+  z-index: 4;
 }
 
 .mobileMenuButton {
@@ -174,14 +242,18 @@ svg {
 .iconButton {
   position: relative;
   display: inline-grid;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 50%;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 12px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
 }
 
 .iconButton.mobileMenuButton {
@@ -213,71 +285,165 @@ svg {
 
 .hero {
   position: relative;
-  min-height: 620px;
+  min-height: 100svh;
   display: grid;
-  align-items: center;
   overflow: hidden;
+  isolation: isolate;
   background-position: center;
   background-size: cover;
   transition: background-image 0.5s ease;
+}
+
+.heroStage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-height: inherit;
+  place-items: center;
+  padding: 96px 0 42px;
+  overflow: hidden;
 }
 
 .hero::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, rgba(8, 8, 12, 0.9), rgba(8, 8, 12, 0.3));
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, rgba(8, 8, 12, 0.26), rgba(8, 8, 12, 0.82)),
+    linear-gradient(110deg, rgba(8, 8, 12, 0.92), rgba(8, 8, 12, 0.28));
+  opacity: calc(1 - (var(--hero-progress, 0) * 0.38));
 }
 
 .heroOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, rgba(255, 0, 0, 0.18), transparent 56%);
+  background:
+    linear-gradient(100deg, rgba(255, 0, 0, 0.18), transparent 56%),
+    rgba(0, 0, 0, calc(var(--hero-progress, 0) * 0.22));
+}
+
+.heroMediaShell {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  z-index: 1;
+  width: var(--hero-media-width, 320px);
+  height: var(--hero-media-height, 390px);
+  max-width: 94vw;
+  max-height: 74svh;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: #111;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.08s linear,
+    height 0.08s linear;
+}
+
+.heroMediaShell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(calc(1.08 - (var(--hero-progress, 0) * 0.05)));
+  transition: transform 0.5s ease;
+}
+
+.heroMediaShade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.52)),
+    linear-gradient(100deg, rgba(255, 0, 0, 0.17), transparent 56%);
+  opacity: calc(0.72 - (var(--hero-progress, 0) * 0.25));
+}
+
+.heroTitleSplit {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: min(1180px, calc(100% - 34px));
+  gap: 10px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.heroTitleWord {
+  display: block;
+  color: rgba(255, 233, 233, 0.92);
+  font-size: clamp(3.7rem, 11vw, 8.6rem);
+  font-weight: 1000;
+  line-height: 0.82;
+  text-shadow: 0 20px 48px rgba(0, 0, 0, 0.38);
+  transition: transform 0.08s linear;
+}
+
+.heroTitleWordLeft {
+  transform: translateX(calc(var(--hero-title-shift, 0vw) * -1));
+}
+
+.heroTitleWordRight {
+  transform: translateX(var(--hero-title-shift, 0vw));
 }
 
 .heroContent {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  bottom: 72px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
   width: min(1180px, calc(100% - 34px));
-  margin: 0 auto;
-  padding: 78px 0 96px;
-}
-
-.hero h1 {
-  max-width: 720px;
-  margin: 20px 0 14px;
-  font-size: 4.5rem;
-  line-height: 0.95;
+  transform: translateX(-50%);
+  text-align: center;
 }
 
 .hero p {
-  max-width: 640px;
-  margin: 0;
+  max-width: 600px;
+  margin: 16px 0 0;
   color: rgba(255, 255, 255, 0.84);
-  font-size: 1.28rem;
+  font-size: 1.08rem;
+  line-height: 1.55;
 }
 
 .heroActions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 30px;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 14px;
+  margin-top: 0;
 }
 
 .primaryCta,
-.secondaryCta {
+.secondaryCta,
+.tertiaryCta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 0 20px;
-  border-radius: 999px;
+  width: 64px;
+  height: 64px;
+  min-height: 64px;
+  padding: 0;
+  border-radius: 50%;
   font-weight: 900;
+}
+
+.primaryCta svg,
+.secondaryCta svg,
+.tertiaryCta svg {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
 }
 
 .primaryCta {
   background: linear-gradient(135deg, var(--brand), var(--brand-2));
   color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 18px 34px rgba(255, 0, 0, 0.28);
 }
 
 .primaryCta:hover,
@@ -287,77 +453,95 @@ svg {
 }
 
 .secondaryCta {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
   color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 18px 34px rgba(255, 0, 0, 0.28);
 }
 
 .secondaryCta:hover,
 .secondaryCta:focus-visible {
-  background: rgba(255, 255, 255, 0.16);
+  filter: brightness(1.08);
   outline: none;
 }
 
-.heroBullets {
-  display: flex;
-  gap: 8px;
-  margin-top: 26px;
-}
-
-.heroBullets button {
-  width: 28px;
-  height: 8px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.34);
-  cursor: pointer;
-}
-
-.heroBullets button.isActive {
-  background: var(--brand);
-}
-
 .featureBand {
-  padding: 24px 0;
+  padding: 76px 0 34px;
+}
+
+.featureIntro {
+  display: grid;
+  justify-items: center;
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.featureIntro h2 {
+  max-width: 760px;
+  margin: 14px 0 0;
+  font-size: 2.5rem;
+  line-height: 1.04;
+}
+
+.featureIntro p {
+  max-width: 680px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .featureGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+  perspective: 1000px;
 }
 
 .featureItem {
   position: relative;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  min-height: 315px;
+  display: block;
+  min-height: 420px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow: var(--shadow);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.34);
+  transform:
+    rotateX(var(--feature-rotate-x, 0deg))
+    rotateY(var(--feature-rotate-y, 0deg));
+  transform-style: preserve-3d;
   transition:
     border-color 0.22s ease,
     box-shadow 0.22s ease,
-    transform 0.22s ease;
+    transform 0.16s ease;
 }
 
 .featureItem::before {
-  display: none;
+  content: "";
+  position: absolute;
+  inset: 14px;
+  z-index: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  pointer-events: none;
+  transform: translateZ(42px);
 }
 
 .featureItem:hover {
   border-color: rgba(255, 0, 0, 0.42);
   box-shadow: 0 22px 54px rgba(0, 0, 0, 0.44);
-  transform: translateY(-4px);
 }
 
 .featureMedia {
-  position: relative;
-  aspect-ratio: 16 / 9;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.06);
+  transform: translateZ(28px);
 }
 
 .featureMedia::after {
@@ -365,8 +549,8 @@ svg {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.54)),
-    linear-gradient(90deg, rgba(255, 0, 0, 0.14), transparent 62%);
+    linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.44) 42%, rgba(0, 0, 0, 0.9)),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.2), transparent 62%);
 }
 
 .featureMedia img {
@@ -383,7 +567,8 @@ svg {
 .featureBadge {
   position: absolute;
   left: 14px;
-  bottom: 14px;
+  top: 14px;
+  bottom: auto;
   z-index: 1;
   display: inline-flex;
   align-items: center;
@@ -397,6 +582,7 @@ svg {
   font-size: 0.78rem;
   font-weight: 900;
   backdrop-filter: blur(10px);
+  transform: translateZ(60px);
 }
 
 .featureBadge svg {
@@ -406,15 +592,22 @@ svg {
 }
 
 .featureBody {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
   display: grid;
   align-content: start;
   gap: 10px;
-  padding: 20px 22px 22px;
+  padding: 0 24px 26px;
+  transform: translateZ(48px);
 }
 
 .featureBody h3 {
   margin: 0;
-  font-size: 1.18rem;
+  padding-right: 0;
+  font-size: 1.4rem;
   line-height: 1.25;
 }
 
@@ -426,6 +619,7 @@ svg {
 
 .menuSection {
   padding: 60px 0 84px;
+  scroll-margin-top: 88px;
 }
 
 .menuIntro {
@@ -469,18 +663,22 @@ svg {
 
 .categoryBar {
   position: sticky;
-  top: 76px;
+  top: 80px;
   z-index: 20;
   display: flex;
   gap: 8px;
   margin: 26px 0 38px;
   padding: 12px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 20px;
   overflow-x: auto;
-  background: linear-gradient(180deg, rgba(28, 14, 14, 0.96), rgba(14, 10, 10, 0.94));
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(16px);
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035) 48%, rgba(255, 0, 0, 0.08)),
+    rgba(13, 10, 12, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 18px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(22px) saturate(1.25);
   scrollbar-width: none;
 }
 
@@ -529,11 +727,11 @@ svg {
 .catalog {
   display: grid;
   gap: 54px;
-  scroll-margin-top: 154px;
+  scroll-margin-top: 156px;
 }
 
 .catalogGroup {
-  scroll-margin-top: 150px;
+  scroll-margin-top: 156px;
 }
 
 .catalogHeader {
@@ -622,7 +820,7 @@ svg {
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.03);
   box-shadow: var(--shadow);
   cursor: pointer;
@@ -747,7 +945,7 @@ svg {
 .productModalLayer {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 120;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -769,7 +967,7 @@ svg {
 }
 
 .productModalLayer.isOpen .productModalBackdrop {
-  background: rgba(0, 0, 0, 0.64);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .productModalPanel {
@@ -929,6 +1127,7 @@ svg {
 
 .contactBand {
   padding: 78px 0 86px;
+  scroll-margin-top: 88px;
   border-top: 1px solid var(--line);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
@@ -1013,6 +1212,10 @@ svg {
     transform 0.2s ease;
 }
 
+.contactCard > span:last-child {
+  min-width: 0;
+}
+
 .contactCard:hover,
 .contactCard:focus-visible {
   border-color: rgba(255, 0, 0, 0.48);
@@ -1053,6 +1256,7 @@ svg {
   color: #fff;
   font-size: 0.97rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .mapFrame {
@@ -1135,7 +1339,7 @@ svg {
 .cartLayer {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 110;
   display: grid;
   pointer-events: none;
 }
@@ -1153,7 +1357,7 @@ svg {
 }
 
 .cartLayer.isOpen .cartBackdrop {
-  background: rgba(0, 0, 0, 0.58);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .cartPanel {
@@ -1497,8 +1701,8 @@ svg {
 }
 
 @media (max-width: 1080px) {
-  .hero h1 {
-    font-size: 3.5rem;
+  .heroTitleWord {
+    font-size: clamp(3.4rem, 12vw, 7.2rem);
   }
 
   .productGrid {
@@ -1510,7 +1714,17 @@ svg {
   .siteHeader {
     grid-template-columns: 1fr auto;
     gap: 10px;
-    min-height: 76px;
+    top: 6px;
+    right: 8px;
+    left: 8px;
+    min-height: 60px;
+    padding: 7px 9px;
+    border-radius: 16px;
+  }
+
+  .siteHeader.isScrolled {
+    min-height: 60px;
+    border-radius: 16px;
   }
 
   .phoneLink {
@@ -1521,34 +1735,67 @@ svg {
     display: inline-grid;
   }
 
+  .brandLogoWrap {
+    width: 112px;
+    height: 42px;
+  }
+
+  .siteHeader.isScrolled .brandLogoWrap {
+    width: 112px;
+    height: 42px;
+  }
+
+  .brand > span:last-child {
+    display: none;
+  }
+
   .topNav {
     position: absolute;
-    top: calc(100% + 1px);
-    right: 10px;
-    left: 10px;
-    display: none;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    z-index: 5;
+    display: grid;
     grid-template-columns: 1fr;
+    align-content: start;
     gap: 8px;
-    max-height: calc(100vh - 92px);
+    height: auto;
+    max-height: calc(100svh - 82px);
     overflow: auto;
-    padding: 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: rgba(13, 10, 10, 0.98);
-    box-shadow: 0 20px 46px rgba(0, 0, 0, 0.42);
-    backdrop-filter: blur(16px);
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 16px;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)),
+      rgba(8, 8, 12, 0.82);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 24px 60px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(22px) saturate(1.25);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px) scale(0.98);
+    transform-origin: top center;
+    visibility: hidden;
+    transition:
+      opacity 0.24s ease,
+      transform 0.24s ease,
+      visibility 0.24s ease;
   }
 
   .siteHeader.isMenuOpen .topNav {
-    display: grid;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    visibility: visible;
   }
 
   .topNav a {
     justify-content: center;
-    min-height: 46px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.06);
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
     text-align: center;
   }
 
@@ -1556,8 +1803,13 @@ svg {
     display: inline-flex;
   }
 
-  .hero h1 {
-    font-size: 2.85rem;
+  .heroTitleWord {
+    font-size: clamp(3.1rem, 16vw, 6.3rem);
+  }
+
+  .heroMediaShell {
+    top: 45%;
+    max-height: 66svh;
   }
 
   .hero p {
@@ -1568,8 +1820,21 @@ svg {
   .menuIntro,
   .contactHeader,
   .contactPanel,
+  .contactCards,
   .footerGrid {
     grid-template-columns: 1fr;
+  }
+
+  .contactCard:nth-child(3) {
+    grid-column: auto;
+  }
+
+  .featureIntro h2 {
+    font-size: 2rem;
+  }
+
+  .featureItem {
+    min-height: 390px;
   }
 
   .contactActions {
@@ -1581,7 +1846,7 @@ svg {
   }
 
   .categoryBar {
-    top: 76px;
+    top: 72px;
   }
 
   .productModalPanel {
@@ -1607,16 +1872,27 @@ svg {
   }
 
   .siteHeader {
-    min-height: 68px;
-    padding: 10px 12px;
+    min-height: 58px;
+  }
+
+  .topNav {
+    top: calc(100% + 6px);
+    right: 0;
+    bottom: auto;
+    left: 0;
   }
 
   .brandLogoWrap {
-    width: 46px;
-    height: 40px;
+    width: 118px;
+    height: 44px;
   }
 
-  .brand small {
+  .siteHeader.isScrolled .brandLogoWrap {
+    width: 118px;
+    height: 44px;
+  }
+
+  .brand > span:last-child {
     display: none;
   }
 
@@ -1625,36 +1901,108 @@ svg {
   }
 
   .hero {
-    min-height: 520px;
+    min-height: 100svh;
   }
 
-  .hero h1 {
-    font-size: 2.4rem;
+  .heroStage {
+    padding: 86px 0 24px;
+  }
+
+  .heroMediaShell {
+    top: 43%;
+    max-width: 94vw;
+    max-height: 72svh;
+  }
+
+  .heroTitleWord {
+    font-size: clamp(3rem, 19vw, 4.9rem);
+  }
+
+  .heroContent {
+    bottom: 44px;
+  }
+
+  .hero p {
+    max-width: 330px;
+    margin-top: 12px;
+    font-size: 0.96rem;
   }
 
   .heroActions {
-    display: grid;
+    display: flex;
+    gap: 12px;
   }
 
   .primaryCta,
-  .secondaryCta {
-    width: 100%;
+  .secondaryCta,
+  .tertiaryCta {
+    width: clamp(54px, 15vw, 62px);
+    height: clamp(54px, 15vw, 62px);
+    min-height: clamp(54px, 15vw, 62px);
+  }
+
+  .primaryCta svg,
+  .secondaryCta svg,
+  .tertiaryCta svg {
+    width: 23px;
+    height: 23px;
   }
 
   .menuSection {
-    padding-top: 42px;
+    padding-top: 36px;
+    scroll-margin-top: 78px;
   }
 
   .menuIntro h2,
+  .featureIntro h2,
   .contactBand h2 {
     font-size: 2rem;
   }
 
+  .featureBand {
+    padding-top: 54px;
+  }
+
+  .featureIntro {
+    margin-bottom: 18px;
+  }
+
+  .featureItem {
+    min-height: 360px;
+  }
+
   .categoryBar {
-    top: 68px;
+    top: 70px;
     margin-left: 0;
     margin-right: 0;
+    border-radius: 18px;
+  }
+
+  .catalog,
+  .catalogGroup {
+    scroll-margin-top: 144px;
+  }
+
+  .contactBand {
+    padding: 56px 0 62px;
+    scroll-margin-top: 78px;
+  }
+
+  .contactCard {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 96px;
+    padding: 15px;
+  }
+
+  .contactIcon {
+    width: 42px;
+    height: 42px;
     border-radius: 12px;
+  }
+
+  .contactCard strong {
+    font-size: 0.94rem;
   }
 
   .contactActions,

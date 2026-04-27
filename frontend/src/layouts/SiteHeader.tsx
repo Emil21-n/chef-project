@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 
 import { LOGO_URL } from "@/shared/constants/restaurant";
@@ -15,14 +15,45 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ contactInfo, onCartOpen, totalItems }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
   const handleNavigate = (id: string) => (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     setMobileMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  useEffect(() => {
+    const updateScrolled = () => setScrolled(window.scrollY > 10);
+
+    updateScrolled();
+    window.addEventListener("scroll", updateScrolled, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateScrolled);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
   return (
-    <header className={`siteHeader ${mobileMenuOpen ? "isMenuOpen" : ""}`}>
+    <>
+      <button
+        className={`mobileMenuBackdrop ${mobileMenuOpen ? "isOpen" : ""}`}
+        type="button"
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+      <header
+        className={`siteHeader ${scrolled ? "isScrolled" : ""} ${
+          mobileMenuOpen ? "isMenuOpen" : ""
+        }`}
+      >
       <a className="brand" href="#top" aria-label="Chef's Choice">
         <span className="brandLogoWrap">
           <img className="brandLogo" src={LOGO_URL} alt="" />
@@ -44,33 +75,7 @@ export function SiteHeader({ contactInfo, onCartOpen, totalItems }: SiteHeaderPr
           Контакты
         </a>
         <a
-          className="mobileNavOnly"
-          href={contactInfo.phoneHref}
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          Позвонить
-        </a>
-        <a
-          className="mobileNavOnly"
-          href={contactInfo.whatsapp}
-          onClick={() => setMobileMenuOpen(false)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          WhatsApp
-        </a>
-        <a
-          className="mobileNavOnly"
-          href={contactInfo.instagram}
-          onClick={() => setMobileMenuOpen(false)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Instagram
-        </a>
-        <a
-          className="mobileNavOnly"
-          href={contactInfo.mapUrl}
+          href={contactInfo.mapUrl || "#contacts"}
           onClick={() => setMobileMenuOpen(false)}
           target="_blank"
           rel="noreferrer"
@@ -99,6 +104,7 @@ export function SiteHeader({ contactInfo, onCartOpen, totalItems }: SiteHeaderPr
           {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
         </button>
       </div>
-    </header>
+      </header>
+    </>
   );
 }
