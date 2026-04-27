@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import { contactInfo } from "@/data/menu";
 import { isOutsideWorkingHours } from "@/shared/lib/work-hours";
+import type { ContactInfo } from "@/shared/model/restaurant";
 import { CloseIcon } from "@/shared/ui/icons";
 
-export function ClosedHoursNotice() {
+export function ClosedHoursNotice({ contactInfo }: { contactInfo: ContactInfo }) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

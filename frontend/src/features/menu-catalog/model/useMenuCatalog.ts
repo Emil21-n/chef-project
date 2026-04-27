@@ -2,9 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { menuSections } from "@/data/menu";
+import type { MenuSection } from "@/shared/model/restaurant";
 
-export function useMenuCatalog() {
+export function useMenuCatalog(menuSections: MenuSection[]) {
   const [activeSection, setActiveSection] = useState("all");
   const [query, setQuery] = useState("");
   const catalogRef = useRef<HTMLDivElement | null>(null);

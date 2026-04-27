@@ -2,9 +2,9 @@
 
 import type { MouseEvent } from "react";
 
-import { contactInfo } from "@/data/menu";
+import type { ContactInfo } from "@/shared/model/restaurant";
 
-export function Footer() {
+export function Footer({ contactInfo }: { contactInfo: ContactInfo }) {
   const handleNavigate = (id: string) => (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });

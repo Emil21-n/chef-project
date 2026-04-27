@@ -1,17 +1,26 @@
 "use client";
 
-import { contactInfo, heroSlides } from "@/data/menu";
+import type { ContactInfo, HeroSlide } from "@/shared/model/restaurant";
 
 type HeroSectionProps = {
   activeSlide: number;
+  contactInfo: ContactInfo;
+  heroSlides: HeroSlide[];
   onSlideChange: (index: number) => void;
 };
 
-export function HeroSection({ activeSlide, onSlideChange }: HeroSectionProps) {
+export function HeroSection({
+  activeSlide,
+  contactInfo,
+  heroSlides,
+  onSlideChange
+}: HeroSectionProps) {
+  const slide = heroSlides[activeSlide] || heroSlides[0];
+
   return (
     <section
       className="hero"
-      style={{ backgroundImage: `url(${heroSlides[activeSlide].image})` }}
+      style={{ backgroundImage: `url(${slide.image})` }}
     >
       <div className="heroOverlay" />
       <div className="heroContent">

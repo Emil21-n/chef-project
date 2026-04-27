@@ -1,4 +1,4 @@
-import type { MenuSection, Product } from "@/data/menu";
+import type { MenuSection, Product } from "@/shared/model/restaurant";
 
 export type ProductWithSection = Product & {
   sectionTitle: string;

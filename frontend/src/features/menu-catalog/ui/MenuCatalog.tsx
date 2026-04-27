@@ -2,18 +2,19 @@
 
 import type { RefObject } from "react";
 
-import { menuSections } from "@/data/menu";
 import type {
   MenuSectionWithProducts,
   ProductWithSection
 } from "@/entities/product/model/types";
 import { ProductCard } from "@/entities/product/ui/ProductCard";
+import type { MenuSection } from "@/shared/model/restaurant";
 import { SearchIcon } from "@/shared/ui/icons";
 
 type MenuCatalogProps = {
   activeSection: string;
   catalogRef: RefObject<HTMLDivElement | null>;
   displayedSections: MenuSectionWithProducts[];
+  menuSections: MenuSection[];
   query: string;
   onCategorySelect: (id: string) => void;
   onProductAdd: (product: ProductWithSection) => void;
@@ -25,6 +26,7 @@ export function MenuCatalog({
   activeSection,
   catalogRef,
   displayedSections,
+  menuSections,
   query,
   onCategorySelect,
   onProductAdd,

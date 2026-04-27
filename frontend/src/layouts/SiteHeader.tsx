@@ -3,16 +3,17 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
 
-import { contactInfo } from "@/data/menu";
 import { LOGO_URL } from "@/shared/constants/restaurant";
+import type { ContactInfo } from "@/shared/model/restaurant";
 import { CartIcon, CloseIcon, MenuIcon } from "@/shared/ui/icons";
 
 type SiteHeaderProps = {
+  contactInfo: ContactInfo;
   onCartOpen: () => void;
   totalItems: number;
 };
 
-export function SiteHeader({ onCartOpen, totalItems }: SiteHeaderProps) {
+export function SiteHeader({ contactInfo, onCartOpen, totalItems }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const handleNavigate = (id: string) => (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();

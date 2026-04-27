@@ -1,6 +1,5 @@
 "use client";
 
-import { heroSlides } from "@/data/menu";
 import type { ProductWithSection } from "@/entities/product/model/types";
 import { ProductModal } from "@/entities/product/ui/ProductModal";
 import { useCart } from "@/features/cart/model/useCart";
@@ -16,10 +15,16 @@ import { SiteHeader } from "@/layouts/SiteHeader";
 import { ContactsSection } from "@/sections/ContactsSection";
 import { FeatureBand } from "@/sections/FeatureBand";
 import { HeroSection } from "@/sections/HeroSection";
+import type { RestaurantData } from "@/shared/model/restaurant";
 
-export function RestaurantPage() {
+type RestaurantPageProps = {
+  data: RestaurantData;
+};
+
+export function RestaurantPage({ data }: RestaurantPageProps) {
+  const { menuSections, heroSlides, contactInfo, minOrder } = data;
   const { activeSlide, setActiveSlide } = useHeroSlider(heroSlides.length);
-  const menuCatalog = useMenuCatalog();
+  const menuCatalog = useMenuCatalog(menuSections);
   const productPreview = useProductModal(menuCatalog.displayedProducts);
   const cart = useCart();
 
@@ -31,21 +36,31 @@ export function RestaurantPage() {
   return (
     <>
       <main id="top">
-        <SiteHeader onCartOpen={cart.openCart} totalItems={cart.totalItems} />
-        <HeroSection activeSlide={activeSlide} onSlideChange={setActiveSlide} />
-        <FeatureBand />
+        <SiteHeader
+          contactInfo={contactInfo}
+          onCartOpen={cart.openCart}
+          totalItems={cart.totalItems}
+        />
+        <HeroSection
+          activeSlide={activeSlide}
+          contactInfo={contactInfo}
+          heroSlides={heroSlides}
+          onSlideChange={setActiveSlide}
+        />
+        <FeatureBand heroSlides={heroSlides} />
         <MenuCatalog
           activeSection={menuCatalog.activeSection}
           catalogRef={menuCatalog.catalogRef}
           displayedSections={menuCatalog.displayedSections}
+          menuSections={menuSections}
           query={menuCatalog.query}
           onCategorySelect={menuCatalog.selectCategory}
           onProductAdd={cart.addProduct}
           onProductOpen={productPreview.openProductModal}
           onQueryChange={menuCatalog.setQuery}
         />
-        <ContactsSection />
-        <Footer />
+        <ContactsSection contactInfo={contactInfo} />
+        <Footer contactInfo={contactInfo} />
       </main>
 
       {productPreview.selectedProduct ? (
@@ -63,6 +78,7 @@ export function RestaurantPage() {
       <CartDrawer
         cart={cart.cart}
         isOpen={cart.cartOpen}
+        minOrder={minOrder}
         subtotal={cart.subtotal}
         onClose={cart.closeCart}
         onAdd={cart.addToCart}
@@ -70,7 +86,7 @@ export function RestaurantPage() {
         onClear={cart.clearCart}
       />
       <AddToast toast={cart.addToast} onUndo={cart.undoLastAddition} />
-      <ClosedHoursNotice />
+      <ClosedHoursNotice contactInfo={contactInfo} />
     </>
   );
 }

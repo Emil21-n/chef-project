@@ -1,25 +1,18 @@
-import { heroSlides } from "@/data/menu";
+import type { HeroSlide } from "@/shared/model/restaurant";
 import { BakeryIcon, ChefHatIcon, FlameIcon } from "@/shared/ui/icons";
 
-const featureCards = [
-  {
-    ...heroSlides[0],
-    Icon: ChefHatIcon,
-    label: "Шеф из Турции"
-  },
-  {
-    ...heroSlides[1],
-    Icon: FlameIcon,
-    label: "Открытый огонь"
-  },
-  {
-    ...heroSlides[2],
-    Icon: BakeryIcon,
-    label: "Своя пекарня"
-  }
+const featureMeta = [
+  { Icon: ChefHatIcon, label: "Шеф из Турции" },
+  { Icon: FlameIcon, label: "Открытый огонь" },
+  { Icon: BakeryIcon, label: "Своя пекарня" }
 ];
 
-export function FeatureBand() {
+export function FeatureBand({ heroSlides }: { heroSlides: HeroSlide[] }) {
+  const featureCards = heroSlides.slice(0, featureMeta.length).map((slide, index) => ({
+    ...slide,
+    ...featureMeta[index]
+  }));
+
   return (
     <section className="featureBand" id="delivery">
       <div className="sectionInner featureGrid">

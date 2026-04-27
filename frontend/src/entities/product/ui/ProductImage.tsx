@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import type { Product } from "@/data/menu";
+import type { Product } from "@/shared/model/restaurant";
 
 export function ProductImage({ product }: { product: Product }) {
   const [failed, setFailed] = useState(false);

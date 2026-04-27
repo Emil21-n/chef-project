@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { MIN_ORDER } from "@/data/menu";
 import type { ProductWithSection } from "@/entities/product/model/types";
 import type { CartItem } from "@/features/cart/model/types";
 import { formatPrice } from "@/shared/lib/format";
@@ -16,6 +15,7 @@ type CartDrawerProps = {
   onAdd: (item: ProductWithSection) => void;
   onRemove: (id: string) => void;
   onClear: () => void;
+  minOrder: number;
 };
 
 export function CartDrawer({
@@ -25,10 +25,12 @@ export function CartDrawer({
   onClose,
   onAdd,
   onRemove,
-  onClear
+  onClear,
+  minOrder
 }: CartDrawerProps) {
   const [orderSent, setOrderSent] = useState(false);
-  const remaining = Math.max(MIN_ORDER - subtotal, 0);
+  const safeMinOrder = Math.max(minOrder, 1);
+  const remaining = Math.max(safeMinOrder - subtotal, 0);
 
   return (
     <div className={`cartLayer ${isOpen ? "isOpen" : ""}`} aria-hidden={!isOpen}>
@@ -76,10 +78,10 @@ export function CartDrawer({
         <div className="minOrder">
           <div>
             <span>Минимальный заказ</span>
-            <strong>{formatPrice(MIN_ORDER)}</strong>
+            <strong>{formatPrice(safeMinOrder)}</strong>
           </div>
           <div className="progressTrack">
-            <span style={{ width: `${Math.min((subtotal / MIN_ORDER) * 100, 100)}%` }} />
+            <span style={{ width: `${Math.min((subtotal / safeMinOrder) * 100, 100)}%` }} />
           </div>
           {remaining > 0 ? (
             <p>До минимального заказа осталось {formatPrice(remaining)}.</p>
@@ -92,7 +94,7 @@ export function CartDrawer({
           className="checkoutForm"
           onSubmit={(event) => {
             event.preventDefault();
-            if (subtotal >= MIN_ORDER && cart.length) {
+            if (subtotal >= safeMinOrder && cart.length) {
               setOrderSent(true);
               onClear();
             }
@@ -110,7 +112,7 @@ export function CartDrawer({
             Адрес доставки
             <textarea name="address" placeholder="Улица, дом, подъезд, этаж" rows={3} />
           </label>
-          <button type="submit" disabled={subtotal < MIN_ORDER || !cart.length}>
+          <button type="submit" disabled={subtotal < safeMinOrder || !cart.length}>
             Оформить заказ
           </button>
           {orderSent ? (

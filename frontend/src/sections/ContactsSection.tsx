@@ -1,4 +1,3 @@
-import { contactInfo } from "@/data/menu";
 import {
   ChatIcon,
   ClockIcon,
@@ -7,8 +6,9 @@ import {
   MapPinIcon,
   PhoneIcon
 } from "@/shared/ui/icons";
+import type { ContactInfo } from "@/shared/model/restaurant";
 
-export function ContactsSection() {
+export function ContactsSection({ contactInfo }: { contactInfo: ContactInfo }) {
   return (
     <section className="contactBand" id="contacts">
       <div className="sectionInner">
