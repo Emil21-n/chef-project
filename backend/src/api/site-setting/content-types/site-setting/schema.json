@@ -1,0 +1,22 @@
+{
+  "kind": "singleType",
+  "collectionName": "site_settings",
+  "info": {
+    "singularName": "site-setting",
+    "pluralName": "site-settings",
+    "displayName": "Site Setting",
+    "description": "Global settings imported from frontend data"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "minOrder": {
+      "type": "integer",
+      "required": true
+    },
+    "extraData": {
+      "type": "json"
+    }
+  }
+}

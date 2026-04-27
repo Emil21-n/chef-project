@@ -1,0 +1,57 @@
+{
+  "kind": "singleType",
+  "collectionName": "contact_infos",
+  "info": {
+    "singularName": "contact-info",
+    "pluralName": "contact-infos",
+    "displayName": "Contact Info",
+    "description": "Restaurant public contact data"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "phone": {
+      "type": "string",
+      "required": true
+    },
+    "phoneHref": {
+      "type": "string",
+      "required": true
+    },
+    "whatsapp": {
+      "type": "string",
+      "required": true
+    },
+    "instagram": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "address": {
+      "type": "text",
+      "required": true
+    },
+    "hours": {
+      "type": "string",
+      "required": true
+    },
+    "deliveryHours": {
+      "type": "string",
+      "required": true
+    },
+    "mapEmbed": {
+      "type": "text",
+      "required": true
+    },
+    "mapUrl": {
+      "type": "text",
+      "required": true
+    },
+    "requisites": {
+      "type": "json"
+    }
+  }
+}

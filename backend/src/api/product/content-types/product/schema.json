@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "Product",
+    "description": "Menu product imported from the frontend catalog"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "externalId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "weight": {
+      "type": "string"
+    },
+    "price": {
+      "type": "integer",
+      "required": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "image": {
+      "type": "string"
+    },
+    "menuSection": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::menu-section.menu-section",
+      "inversedBy": "products"
+    }
+  }
+}
