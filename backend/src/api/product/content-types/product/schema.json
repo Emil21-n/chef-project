@@ -38,6 +38,10 @@
     "image": {
       "type": "string"
     },
+    "isAvailable": {
+      "type": "boolean",
+      "default": true
+    },
     "menuSection": {
       "type": "relation",
       "relation": "manyToOne",

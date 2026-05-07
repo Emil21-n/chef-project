@@ -12,10 +12,18 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product, onOpen, onAdd }: ProductCardProps) {
+  const isUnavailable = !product.isAvailable;
+
   return (
-    <article className="productCard" onClick={() => onOpen(product)}>
+    <article
+      className={`productCard ${isUnavailable ? "isUnavailable" : ""}`}
+      onClick={() => onOpen(product)}
+    >
       <div className="productMedia">
         <ProductImage product={product} />
+        {isUnavailable ? (
+          <span className="productAvailabilityBadge">Нет в наличии</span>
+        ) : null}
       </div>
       <div className="productBody">
         <div className="productMeta">
@@ -29,13 +37,15 @@ export function ProductCard({ product, onOpen, onAdd }: ProductCardProps) {
         <strong>{formatPrice(product.price)}</strong>
         <button
           type="button"
+          disabled={isUnavailable}
           onClick={(event) => {
             event.stopPropagation();
+            if (isUnavailable) return;
             onAdd(product);
           }}
         >
-          <PlusIcon />
-          Добавить
+          {isUnavailable ? null : <PlusIcon />}
+          {isUnavailable ? "Недоступно" : "Добавить"}
         </button>
       </div>
     </article>

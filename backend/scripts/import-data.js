@@ -44,6 +44,7 @@ const REQUIRED_ATTRIBUTES = {
     'sortOrder',
     'description',
     'image',
+    'isAvailable',
     'menuSection',
   ],
   [UIDS.menuSection]: ['slug', 'title', 'sortOrder', 'products'],
@@ -136,7 +137,9 @@ function validateFrontendData(data) {
         !product.id ||
         !product.name ||
         !Number.isInteger(product.price) ||
-        typeof product.description !== 'string'
+        typeof product.description !== 'string' ||
+        (product.isAvailable !== undefined &&
+          typeof product.isAvailable !== 'boolean')
       ) {
         throw new Error(`Invalid product: ${JSON.stringify(product)}`);
       }
@@ -234,7 +237,7 @@ async function upsertSingleDocument(strapi, uid, data) {
 }
 
 function buildProductData(product, sortOrder) {
-  return {
+  const data = {
     externalId: product.id,
     name: product.name,
     weight: product.weight || '',
@@ -243,6 +246,12 @@ function buildProductData(product, sortOrder) {
     description: product.description,
     image: product.image || null,
   };
+
+  if (typeof product.isAvailable === 'boolean') {
+    data.isAvailable = product.isAvailable;
+  }
+
+  return data;
 }
 
 function buildExtraData(menuData) {

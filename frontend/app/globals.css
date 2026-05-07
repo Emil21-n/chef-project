@@ -338,17 +338,18 @@ svg {
   background: #111;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
   transform: translate(-50%, -50%);
-  transition:
-    width 0.08s linear,
-    height 0.08s linear;
+  transition: none;
+  will-change: width, height;
 }
 
-.heroMediaShell img {
+.heroMediaShell img,
+.heroMediaShell video {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   transform: scale(calc(1.08 - (var(--hero-progress, 0) * 0.05)));
-  transition: transform 0.5s ease;
+  transition: none;
 }
 
 .heroMediaShade {
@@ -824,6 +825,7 @@ svg {
   background: rgba(255, 255, 255, 0.03);
   box-shadow: var(--shadow);
   cursor: pointer;
+  position: relative;
   transition:
     border-color 0.2s ease,
     transform 0.2s ease,
@@ -836,7 +838,20 @@ svg {
   transform: translateY(-3px);
 }
 
+.productCard.isUnavailable {
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.productCard.isUnavailable:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: none;
+}
+
 .productMedia {
+  position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
@@ -851,6 +866,39 @@ svg {
 
 .productCard:hover .productMedia img {
   transform: scale(1.04);
+}
+
+.productCard.isUnavailable .productMedia img,
+.productCard.isUnavailable .productPlaceholder,
+.productModalPanel.isUnavailable .productModalMedia img,
+.productModalPanel.isUnavailable .productPlaceholder {
+  filter: grayscale(0.88) brightness(0.52);
+  transform: none;
+}
+
+.productCard.isUnavailable .productBody,
+.productCard.isUnavailable .productFooter {
+  opacity: 0.72;
+}
+
+.productAvailabilityBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(10, 10, 14, 0.78);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.72rem;
+  font-weight: 1000;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
 }
 
 .productPlaceholder {
@@ -942,6 +990,17 @@ svg {
   outline: none;
 }
 
+.productFooter button:disabled {
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.11);
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.productFooter button:disabled:hover,
+.productFooter button:disabled:focus-visible {
+  filter: none;
+}
+
 .productModalLayer {
   position: fixed;
   inset: 0;
@@ -1002,7 +1061,9 @@ svg {
 }
 
 .productModalMedia {
+  position: relative;
   min-height: 420px;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -1040,6 +1101,17 @@ svg {
   font-size: 1.6rem;
 }
 
+.availabilityNotice {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 0, 0, 0.08)),
+    rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.5;
+}
+
 .modalControls {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1072,6 +1144,16 @@ svg {
   outline: none;
 }
 
+.modalQuantity button:disabled {
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.modalQuantity button:disabled:hover,
+.modalQuantity button:disabled:focus-visible {
+  background: transparent;
+}
+
 .modalQuantity span {
   text-align: center;
   font-weight: 1000;
@@ -1091,6 +1173,17 @@ svg {
 .modalAddButton:focus-visible {
   filter: brightness(1.08);
   outline: none;
+}
+
+.modalAddButton:disabled {
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.modalAddButton:disabled:hover,
+.modalAddButton:disabled:focus-visible {
+  filter: none;
 }
 
 .modalSwitchers {

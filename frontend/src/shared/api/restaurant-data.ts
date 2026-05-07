@@ -56,6 +56,10 @@ function numberValue(value: unknown, fallback = 0) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function booleanValue(value: unknown, fallback = false) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
 function stringArrayValue(value: unknown) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -90,7 +94,8 @@ function mapProduct(record: StrapiRecord): Product {
     weight: stringValue(record.weight),
     price: numberValue(record.price),
     description: stringValue(record.description),
-    image: stringValue(record.image) || undefined
+    image: stringValue(record.image) || undefined,
+    isAvailable: booleanValue(record.isAvailable, true)
   };
 }
 

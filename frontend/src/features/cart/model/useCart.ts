@@ -23,6 +23,8 @@ export function useCart() {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const addToCart = (product: ProductWithSection, quantity = 1) => {
+    if (!product.isAvailable) return;
+
     setCart((current) => {
       const existing = current.find((item) => item.id === product.id);
       if (existing) {
@@ -48,6 +50,8 @@ export function useCart() {
   };
 
   const showAddToast = (product: ProductWithSection, quantity: number) => {
+    if (!product.isAvailable) return;
+
     if (toastTimerRef.current) {
       window.clearTimeout(toastTimerRef.current);
     }
@@ -59,6 +63,8 @@ export function useCart() {
   };
 
   const addProduct = (product: ProductWithSection, quantity = 1) => {
+    if (!product.isAvailable) return;
+
     addToCart(product, quantity);
     showAddToast(product, quantity);
   };

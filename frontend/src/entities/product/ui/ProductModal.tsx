@@ -33,6 +33,7 @@ export function ProductModal({
   onAdd
 }: ProductModalProps) {
   const [quantity, setQuantity] = useState(1);
+  const isUnavailable = !product.isAvailable;
 
   useEffect(() => {
     setQuantity(1);
@@ -76,7 +77,7 @@ export function ProductModal({
     <div className={`productModalLayer ${isOpen ? "isOpen" : ""}`} aria-hidden={!isOpen}>
       <button className="productModalBackdrop" type="button" onClick={onClose} />
       <section
-        className="productModalPanel"
+        className={`productModalPanel ${isUnavailable ? "isUnavailable" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-modal-title"
@@ -87,6 +88,11 @@ export function ProductModal({
 
         <div className="productModalMedia">
           <ProductImage product={product} />
+          {isUnavailable ? (
+            <span className="productAvailabilityBadge productModalAvailability">
+              Нет в наличии
+            </span>
+          ) : null}
         </div>
 
         <div className="productModalInfo">
@@ -97,23 +103,43 @@ export function ProductModal({
           <h2 id="product-modal-title">{product.name}</h2>
           <p>{product.description || "Позиция из меню Chef's Choice."}</p>
           <strong className="modalPrice">{formatPrice(product.price)}</strong>
+          {isUnavailable ? (
+            <div className="availabilityNotice" role="status">
+              Эта позиция сейчас недоступна для заказа. Она останется в меню, чтобы
+              гости видели ассортимент.
+            </div>
+          ) : null}
 
           <div className="modalControls">
             <div className="modalQuantity" aria-label={`Количество ${product.name}`}>
-              <button type="button" onClick={decrease} aria-label="Уменьшить количество">
+              <button
+                type="button"
+                onClick={decrease}
+                disabled={isUnavailable}
+                aria-label="Уменьшить количество"
+              >
                 <MinusIcon />
               </button>
               <span>{quantity}</span>
-              <button type="button" onClick={increase} aria-label="Увеличить количество">
+              <button
+                type="button"
+                onClick={increase}
+                disabled={isUnavailable}
+                aria-label="Увеличить количество"
+              >
                 <PlusIcon />
               </button>
             </div>
             <button
               className="modalAddButton"
               type="button"
-              onClick={() => onAdd(product, quantity)}
+              disabled={isUnavailable}
+              onClick={() => {
+                if (isUnavailable) return;
+                onAdd(product, quantity);
+              }}
             >
-              Добавить в корзину
+              {isUnavailable ? "Нет в наличии" : "Добавить в корзину"}
             </button>
           </div>
 

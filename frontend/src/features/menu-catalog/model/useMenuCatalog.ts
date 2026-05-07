@@ -37,11 +37,10 @@ export function useMenuCatalog(menuSections: MenuSection[]) {
   const selectCategory = (id: string) => {
     setActiveSection(id);
     window.requestAnimationFrame(() => {
-      const categoryBar = document.querySelector<HTMLElement>(".categoryBar");
-      const target = categoryBar || catalogRef.current;
+      const target = catalogRef.current;
       if (!target) return;
 
-      const stickyOffset = window.innerWidth <= 560 ? 72 : window.innerWidth <= 820 ? 76 : 80;
+      const stickyOffset = window.innerWidth <= 560 ? 146 : window.innerWidth <= 820 ? 154 : 160;
       const top = target.getBoundingClientRect().top + window.scrollY - stickyOffset;
 
       window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
