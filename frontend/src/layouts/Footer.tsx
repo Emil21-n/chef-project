@@ -25,6 +25,7 @@ export function Footer({ contactInfo }: { contactInfo: ContactInfo }) {
           <a href="#contacts" onClick={handleNavigate("contacts")}>
             Контакты
           </a>
+          <a href="/privacy-policy">Политика конфиденциальности</a>
         </div>
         <div>
           <span>Соцсети</span>
