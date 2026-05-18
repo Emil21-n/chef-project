@@ -26,7 +26,7 @@ type CartDrawerProps = {
 };
 
 type CheckoutFormState = {
-  deliveryMethod: string;
+  deliveryMethod: DeliveryMethod;
   deliveryTiming: "soon" | "scheduled";
   name: string;
   phone: string;
@@ -43,11 +43,22 @@ type CheckoutFormState = {
 
 type CheckoutFormErrors = Partial<Record<keyof CheckoutFormState | "cart", string>>;
 
-const DELIVERY_METHODS = ["Доставка по Москве (зона ограничена*)"];
+type DeliveryMethod = "pickup" | "delivery";
+
+const PICKUP_METHOD_LABEL = "Самовывоз";
+const DELIVERY_METHOD_LABEL = "Доставка по Москве (зона ограничена*)";
+const DELIVERY_METHODS: { value: DeliveryMethod; label: string }[] = [
+  { value: "pickup", label: PICKUP_METHOD_LABEL },
+  { value: "delivery", label: DELIVERY_METHOD_LABEL }
+];
 const DELIVERY_TIMING_OPTIONS = [
   { value: "soon", label: "Как можно скорее" },
   { value: "scheduled", label: "Дата и время" }
 ] as const;
+
+function getDeliveryMethodLabel(method: DeliveryMethod) {
+  return method === "pickup" ? PICKUP_METHOD_LABEL : DELIVERY_METHOD_LABEL;
+}
 
 function getDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -90,7 +101,7 @@ function formatDeliveryDateTime(dateValue: string, timeValue: string) {
 
 function createInitialCheckoutForm(): CheckoutFormState {
   return {
-    deliveryMethod: DELIVERY_METHODS[0],
+    deliveryMethod: "delivery",
     deliveryTiming: "soon",
     name: "",
     phone: "",
@@ -167,8 +178,10 @@ function validateCheckoutForm(
   if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
     errors.phone = "Введите телефон в формате +7 (000) 000-00-00.";
   }
-  if (!form.street.trim()) errors.street = "Укажите улицу.";
-  if (!form.house.trim()) errors.house = "Укажите дом.";
+  if (form.deliveryMethod === "delivery") {
+    if (!form.street.trim()) errors.street = "Укажите улицу.";
+    if (!form.house.trim()) errors.house = "Укажите дом.";
+  }
   if (form.deliveryTiming === "scheduled") {
     const deliveryDate = parseDateInput(form.deliveryDate);
     const today = parseDateInput(getDateInputValue());
@@ -178,7 +191,9 @@ function validateCheckoutForm(
     } else if (today && deliveryDate < today) {
       errors.deliveryDate = "Дата доставки не может быть раньше сегодняшней.";
     }
-    if (!form.deliveryTime) errors.deliveryTime = "Выберите время доставки.";
+    if (!form.deliveryTime) {
+      errors.deliveryTime = "Выберите время доставки.";
+    }
   }
   if (!form.privacyAccepted) {
     errors.privacyAccepted = "Подтвердите согласие с политикой конфиденциальности.";
@@ -256,6 +271,12 @@ export function CartDrawer({
       clearFieldError("deliveryDate");
       clearFieldError("deliveryTime");
     }
+    if (fieldName === "deliveryMethod") {
+      clearFieldError("street");
+      clearFieldError("house");
+      clearFieldError("deliveryDate");
+      clearFieldError("deliveryTime");
+    }
     setSubmittedOrder(null);
   };
 
@@ -269,6 +290,7 @@ export function CartDrawer({
       return;
     }
 
+    const isPickup = checkoutForm.deliveryMethod === "pickup";
     const deliveryTime =
       checkoutForm.deliveryTiming === "soon"
         ? "Как можно скорее"
@@ -280,12 +302,12 @@ export function CartDrawer({
         phone: formatRussianPhone(checkoutForm.phone)
       },
       delivery: {
-        method: checkoutForm.deliveryMethod,
-        street: checkoutForm.street.trim(),
-        house: checkoutForm.house.trim(),
-        entrance: checkoutForm.entrance.trim(),
-        apartment: checkoutForm.apartment.trim(),
-        floor: checkoutForm.floor.trim(),
+        method: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
+        street: isPickup ? "" : checkoutForm.street.trim(),
+        house: isPickup ? "" : checkoutForm.house.trim(),
+        entrance: isPickup ? "" : checkoutForm.entrance.trim(),
+        apartment: isPickup ? "" : checkoutForm.apartment.trim(),
+        floor: isPickup ? "" : checkoutForm.floor.trim(),
         comment: checkoutForm.comment.trim()
       },
       deliveryTime,
@@ -423,8 +445,8 @@ export function CartDrawer({
                   aria-invalid={Boolean(checkoutErrors.deliveryMethod)}
                 >
                   {DELIVERY_METHODS.map((method) => (
-                    <option value={method} key={method}>
-                      {method}
+                    <option value={method.value} key={method.value}>
+                      {method.label}
                     </option>
                   ))}
                 </select>
@@ -464,65 +486,69 @@ export function CartDrawer({
                 </label>
               </div>
 
-              <label className="checkoutField checkoutFieldWide">
-                Улица
-                <input
-                  name="street"
-                  value={checkoutForm.street}
-                  placeholder="Улица"
-                  onChange={handleCheckoutChange}
-                  aria-invalid={Boolean(checkoutErrors.street)}
-                />
-                {checkoutErrors.street ? (
-                  <span className="fieldError">{checkoutErrors.street}</span>
-                ) : null}
-              </label>
+              {checkoutForm.deliveryMethod === "delivery" ? (
+                <>
+                  <label className="checkoutField checkoutFieldWide">
+                    Улица
+                    <input
+                      name="street"
+                      value={checkoutForm.street}
+                      placeholder="Улица"
+                      onChange={handleCheckoutChange}
+                      aria-invalid={Boolean(checkoutErrors.street)}
+                    />
+                    {checkoutErrors.street ? (
+                      <span className="fieldError">{checkoutErrors.street}</span>
+                    ) : null}
+                  </label>
 
-              <div className="checkoutAddressGrid">
-                <label className="checkoutField">
-                  Дом
-                  <input
-                    name="house"
-                    value={checkoutForm.house}
-                    placeholder="Дом"
-                    onChange={handleCheckoutChange}
-                    aria-invalid={Boolean(checkoutErrors.house)}
-                  />
-                  {checkoutErrors.house ? (
-                    <span className="fieldError">{checkoutErrors.house}</span>
-                  ) : null}
-                </label>
+                  <div className="checkoutAddressGrid">
+                    <label className="checkoutField">
+                      Дом
+                      <input
+                        name="house"
+                        value={checkoutForm.house}
+                        placeholder="Дом"
+                        onChange={handleCheckoutChange}
+                        aria-invalid={Boolean(checkoutErrors.house)}
+                      />
+                      {checkoutErrors.house ? (
+                        <span className="fieldError">{checkoutErrors.house}</span>
+                      ) : null}
+                    </label>
 
-                <label className="checkoutField">
-                  Подъезд
-                  <input
-                    name="entrance"
-                    value={checkoutForm.entrance}
-                    placeholder="Подъезд"
-                    onChange={handleCheckoutChange}
-                  />
-                </label>
+                    <label className="checkoutField">
+                      Подъезд
+                      <input
+                        name="entrance"
+                        value={checkoutForm.entrance}
+                        placeholder="Подъезд"
+                        onChange={handleCheckoutChange}
+                      />
+                    </label>
 
-                <label className="checkoutField">
-                  Кв/оф
-                  <input
-                    name="apartment"
-                    value={checkoutForm.apartment}
-                    placeholder="Кв/оф"
-                    onChange={handleCheckoutChange}
-                  />
-                </label>
+                    <label className="checkoutField">
+                      Кв/оф
+                      <input
+                        name="apartment"
+                        value={checkoutForm.apartment}
+                        placeholder="Кв/оф"
+                        onChange={handleCheckoutChange}
+                      />
+                    </label>
 
-                <label className="checkoutField">
-                  Этаж
-                  <input
-                    name="floor"
-                    value={checkoutForm.floor}
-                    placeholder="Этаж"
-                    onChange={handleCheckoutChange}
-                  />
-                </label>
-              </div>
+                    <label className="checkoutField">
+                      Этаж
+                      <input
+                        name="floor"
+                        value={checkoutForm.floor}
+                        placeholder="Этаж"
+                        onChange={handleCheckoutChange}
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : null}
 
               <label className="checkoutField checkoutFieldWide">
                 Комментарий
