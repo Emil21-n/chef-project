@@ -3,21 +3,41 @@ import type {
   HeroSlide,
   MenuSection,
   Product,
+  ProductOptionGroup,
   RestaurantData
 } from "@/shared/model/restaurant";
 
 type StrapiRecord = Record<string, unknown>;
 
-const DEFAULT_STRAPI_URL = "http://localhost:1337";
+const EMPTY_CONTACT_INFO: ContactInfo = {
+  phone: "",
+  phoneHref: "",
+  whatsapp: "",
+  instagram: "",
+  email: "",
+  address: "",
+  hours: "",
+  deliveryHours: "",
+  mapEmbed: "about:blank",
+  mapUrl: "",
+  requisites: []
+};
 
-function getStrapiUrl() {
-  const strapiUrl = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL;
+const EMPTY_RESTAURANT_DATA: RestaurantData = {
+  menuSections: [],
+  heroSlides: [],
+  contactInfo: EMPTY_CONTACT_INFO,
+  minOrder: 0
+};
 
-  if (!strapiUrl && process.env.NODE_ENV === "production") {
-    throw new Error("Missing STRAPI_URL environment variable.");
+function getStrapiApiUrl() {
+  const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL?.trim();
+
+  if (!strapiUrl) {
+    throw new Error("Missing NEXT_PUBLIC_STRAPI_API_URL environment variable.");
   }
 
-  return (strapiUrl || DEFAULT_STRAPI_URL).replace(/\/$/, "");
+  return strapiUrl.replace(/\/$/, "");
 }
 
 function unwrapRecord(value: unknown): StrapiRecord {
@@ -53,7 +73,14 @@ function stringValue(value: unknown, fallback = "") {
 }
 
 function numberValue(value: unknown, fallback = 0) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsedValue = Number(value);
+
+    if (Number.isFinite(parsedValue)) return parsedValue;
+  }
+
+  return fallback;
 }
 
 function booleanValue(value: unknown, fallback = false) {
@@ -66,17 +93,119 @@ function stringArrayValue(value: unknown) {
     : [];
 }
 
-async function fetchFromStrapi(path: string) {
-  const headers: HeadersInit = {};
+function productOptionGroupsValue(value: unknown): ProductOptionGroup[] | undefined {
+  if (!Array.isArray(value)) return undefined;
 
-  if (process.env.STRAPI_API_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.STRAPI_API_TOKEN}`;
+  const optionGroups = value.flatMap((group): ProductOptionGroup[] => {
+    if (!group || typeof group !== "object") return [];
+
+    const groupRecord = group as StrapiRecord;
+    const options = Array.isArray(groupRecord.options)
+      ? groupRecord.options.flatMap((option): ProductOptionGroup["options"] => {
+          if (!option || typeof option !== "object") return [];
+
+          const optionRecord = option as StrapiRecord;
+          const id = stringValue(optionRecord.id);
+          const label = stringValue(optionRecord.label);
+
+          return id && label ? [{ id, label }] : [];
+        })
+      : [];
+    const id = stringValue(groupRecord.id);
+    const label = stringValue(groupRecord.label);
+
+    if (!id || !label || !options.length) return [];
+
+    return [
+      {
+        id,
+        label,
+        required: booleanValue(groupRecord.required),
+        options
+      }
+    ];
+  });
+
+  return optionGroups.length ? optionGroups : undefined;
+}
+
+function describeError(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
+function resolveStrapiUrl(value: string, strapiUrl: string) {
+  if (!value) return "";
+
+  try {
+    return new URL(value, `${strapiUrl}/`).toString();
+  } catch {
+    return value;
+  }
+}
+
+function readMediaUrl(value: unknown, strapiUrl: string): string {
+  if (typeof value === "string") {
+    return resolveStrapiUrl(value, strapiUrl);
   }
 
-  const response = await fetch(`${getStrapiUrl()}${path}`, {
-    headers,
-    cache: "no-store"
-  });
+  if (Array.isArray(value)) {
+    return readMediaUrl(value[0], strapiUrl);
+  }
+
+  const data = unwrapData(value);
+
+  if (Array.isArray(data)) {
+    return readMediaUrl(data[0], strapiUrl);
+  }
+
+  const record = unwrapRecord(data);
+  const directUrl = stringValue(record.url);
+
+  if (directUrl) {
+    return resolveStrapiUrl(directUrl, strapiUrl);
+  }
+
+  const formats = record.formats;
+
+  if (formats && typeof formats === "object") {
+    const formatRecord = formats as StrapiRecord;
+    const preferredFormat =
+      formatRecord.large ||
+      formatRecord.medium ||
+      formatRecord.small ||
+      formatRecord.thumbnail;
+    const preferredUrl = stringValue(unwrapRecord(preferredFormat).url);
+
+    if (preferredUrl) {
+      return resolveStrapiUrl(preferredUrl, strapiUrl);
+    }
+  }
+
+  return "";
+}
+
+async function fetchFromStrapi(path: string, strapiUrl: string) {
+  const headers: HeadersInit = {
+    Accept: "application/json"
+  };
+  const token = process.env.STRAPI_API_TOKEN?.trim();
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${strapiUrl}${path}`, {
+      headers,
+      cache: "no-store"
+    });
+  } catch (error) {
+    throw new Error(
+      `Unable to reach Strapi at ${strapiUrl}${path}: ${describeError(error)}`
+    );
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -87,15 +216,16 @@ async function fetchFromStrapi(path: string) {
   return response.json();
 }
 
-function mapProduct(record: StrapiRecord): Product {
+function mapProduct(record: StrapiRecord, strapiUrl: string): Product {
   return {
     id: stringValue(record.externalId, stringValue(record.documentId, String(record.id))),
     name: stringValue(record.name),
     weight: stringValue(record.weight),
     price: numberValue(record.price),
     description: stringValue(record.description),
-    image: stringValue(record.image) || undefined,
-    isAvailable: booleanValue(record.isAvailable, true)
+    image: readMediaUrl(record.image, strapiUrl) || undefined,
+    isAvailable: booleanValue(record.isAvailable, true),
+    optionGroups: productOptionGroupsValue(record.optionGroups)
   };
 }
 
@@ -113,11 +243,11 @@ function getProductSectionId(record: StrapiRecord) {
   return stringValue(section.slug, stringValue(section.documentId, String(section.id || "")));
 }
 
-function mapHeroSlide(record: StrapiRecord): HeroSlide {
+function mapHeroSlide(record: StrapiRecord, strapiUrl: string): HeroSlide {
   return {
     title: stringValue(record.title),
     text: stringValue(record.text),
-    image: stringValue(record.image)
+    image: readMediaUrl(record.image, strapiUrl)
   };
 }
 
@@ -137,7 +267,8 @@ function mapContactInfo(record: StrapiRecord): ContactInfo {
   };
 }
 
-export async function getRestaurantData(): Promise<RestaurantData> {
+async function getRestaurantDataFromStrapi(): Promise<RestaurantData> {
+  const strapiUrl = getStrapiApiUrl();
   const menuParams = new URLSearchParams({
     "sort[0]": "sortOrder:asc",
     "pagination[pageSize]": "100"
@@ -145,11 +276,12 @@ export async function getRestaurantData(): Promise<RestaurantData> {
   const productParams = new URLSearchParams({
     "sort[0]": "sortOrder:asc",
     "pagination[pageSize]": "200",
-    "populate[menuSection]": "true"
+    populate: "*"
   });
   const heroParams = new URLSearchParams({
     "sort[0]": "sortOrder:asc",
-    "pagination[pageSize]": "20"
+    "pagination[pageSize]": "20",
+    populate: "*"
   });
 
   const [
@@ -160,11 +292,11 @@ export async function getRestaurantData(): Promise<RestaurantData> {
     settingsResponse
   ] =
     await Promise.all([
-      fetchFromStrapi(`/api/menu-sections?${menuParams.toString()}`),
-      fetchFromStrapi(`/api/products?${productParams.toString()}`),
-      fetchFromStrapi(`/api/hero-slides?${heroParams.toString()}`),
-      fetchFromStrapi("/api/contact-info"),
-      fetchFromStrapi("/api/site-setting")
+      fetchFromStrapi(`/api/menu-sections?${menuParams.toString()}`, strapiUrl),
+      fetchFromStrapi(`/api/products?${productParams.toString()}`, strapiUrl),
+      fetchFromStrapi(`/api/hero-slides?${heroParams.toString()}`, strapiUrl),
+      fetchFromStrapi("/api/contact-info", strapiUrl),
+      fetchFromStrapi("/api/site-setting", strapiUrl)
     ]);
 
   const productsBySection = unwrapCollection(productsResponse)
@@ -173,7 +305,7 @@ export async function getRestaurantData(): Promise<RestaurantData> {
       const sectionId = getProductSectionId(productRecord);
       const products = sections.get(sectionId) || [];
 
-      products.push(mapProduct(productRecord));
+      products.push(mapProduct(productRecord, strapiUrl));
       sections.set(sectionId, products);
 
       return sections;
@@ -190,7 +322,7 @@ export async function getRestaurantData(): Promise<RestaurantData> {
     })
     .filter((section) => section.title && section.products.length);
   const heroSlides = unwrapCollection(heroResponse)
-    .map(mapHeroSlide)
+    .map((slide) => mapHeroSlide(slide, strapiUrl))
     .filter((slide) => slide.title && slide.image);
   const contactInfo = mapContactInfo(unwrapRecord(unwrapData(contactResponse)));
   const siteSetting = unwrapRecord(unwrapData(settingsResponse));
@@ -214,4 +346,13 @@ export async function getRestaurantData(): Promise<RestaurantData> {
     contactInfo,
     minOrder
   };
+}
+
+export async function getRestaurantData(): Promise<RestaurantData> {
+  try {
+    return await getRestaurantDataFromStrapi();
+  } catch (error) {
+    console.error(`Unable to load Strapi restaurant data: ${describeError(error)}`);
+    return EMPTY_RESTAURANT_DATA;
+  }
 }

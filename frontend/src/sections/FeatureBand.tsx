@@ -8,34 +8,24 @@ import { BakeryIcon, ChefHatIcon, FlameIcon } from "@/shared/ui/icons";
 const featureMeta = [
   {
     Icon: ChefHatIcon,
-    label: "Шеф из Турции",
-    title: "Блюда от шефа",
-    text: "Авторские турецкие рецепты, свежие специи и аккуратная подача в каждом заказе.",
-    fallbackImage:
-      "https://images.unsplash.com/photo-1559847844-5315695dadae?q=80&w=1200&auto=format&fit=crop"
+    label: "Шеф из Турции"
   },
   {
     Icon: FlameIcon,
-    label: "Открытый огонь",
-    title: "Стейки",
-    text: "Мясо готовим на сильном жаре, чтобы сохранить сочность, аромат и красивую корочку.",
-    fallbackImage:
-      "https://images.unsplash.com/photo-1558030006-450675393462?q=80&w=1200&auto=format&fit=crop"
+    label: "Открытый огонь"
   },
   {
     Icon: BakeryIcon,
-    label: "Своя пекарня",
-    title: "Выпечка",
-    text: "Лепешки, пироги и десерты выпекаем небольшими партиями, чтобы они приезжали мягкими и свежими.",
-    fallbackImage:
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=1200&auto=format&fit=crop"
+    label: "Своя пекарня"
   }
 ];
 
 export function FeatureBand({ heroSlides }: { heroSlides: HeroSlide[] }) {
-  const featureCards = featureMeta.map((feature, index) => ({
-    ...feature,
-    image: heroSlides[index]?.image || feature.fallbackImage
+  const featureCards = heroSlides.slice(0, featureMeta.length).map((slide, index) => ({
+    ...featureMeta[index],
+    title: slide.title,
+    text: slide.text,
+    image: slide.image
   }));
 
   const handlePointerMove = (event: PointerEvent<HTMLElement>) => {

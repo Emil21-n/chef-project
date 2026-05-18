@@ -1,5 +1,6 @@
 "use client";
 
+import { hasRequiredProductOptions } from "@/entities/product/model/options";
 import type { ProductWithSection } from "@/entities/product/model/types";
 import { ProductImage } from "@/entities/product/ui/ProductImage";
 import { formatPrice } from "@/shared/lib/format";
@@ -13,6 +14,7 @@ type ProductCardProps = {
 
 export function ProductCard({ product, onOpen, onAdd }: ProductCardProps) {
   const isUnavailable = !product.isAvailable;
+  const needsOptionSelection = hasRequiredProductOptions(product);
 
   return (
     <article
@@ -41,11 +43,15 @@ export function ProductCard({ product, onOpen, onAdd }: ProductCardProps) {
           onClick={(event) => {
             event.stopPropagation();
             if (isUnavailable) return;
+            if (needsOptionSelection) {
+              onOpen(product);
+              return;
+            }
             onAdd(product);
           }}
         >
           {isUnavailable ? null : <PlusIcon />}
-          {isUnavailable ? "Недоступно" : "Добавить"}
+          {isUnavailable ? "Недоступно" : needsOptionSelection ? "Выбрать" : "Добавить"}
         </button>
       </div>
     </article>

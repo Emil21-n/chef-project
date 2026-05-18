@@ -28,12 +28,8 @@ export function HeroSection({
     heroSlides.find((slide) => /стейк|грил|огонь|мяс/i.test(`${slide.title} ${slide.text}`)) ||
     heroSlides[1] ||
     heroSlides[0];
-  const backgroundImage =
-    breadSlide?.image ||
-    "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=1800&auto=format&fit=crop";
-  const foregroundImage =
-    steakSlide?.image ||
-    "https://images.unsplash.com/photo-1558030006-450675393462?q=80&w=1800&auto=format&fit=crop";
+  const backgroundImage = breadSlide?.image || "";
+  const foregroundImage = steakSlide?.image || "";
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -80,7 +76,7 @@ export function HeroSection({
   }, []);
 
   const heroStyle = {
-    backgroundImage: `url(${backgroundImage})`,
+    ...(backgroundImage ? { backgroundImage: `url(${backgroundImage})` } : {}),
     "--hero-progress": 0,
     "--hero-media-width": "320px",
     "--hero-media-height": "390px",
@@ -99,7 +95,7 @@ export function HeroSection({
           <video
             className="heroVideo"
             src={HERO_VIDEO_SRC}
-            poster={foregroundImage}
+            poster={foregroundImage || undefined}
             autoPlay
             muted
             loop

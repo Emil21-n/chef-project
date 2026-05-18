@@ -32,6 +32,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -1112,6 +1113,79 @@ svg {
   line-height: 1.5;
 }
 
+.productOptions {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.productOptionGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.productOptionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.productOptionHeader small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.productOptionChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.productOptionChoices button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.productOptionChoices button:hover,
+.productOptionChoices button:focus-visible {
+  border-color: rgba(255, 0, 0, 0.46);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.productOptionChoices button.isSelected {
+  border-color: rgba(255, 0, 0, 0.62);
+  background: linear-gradient(135deg, rgba(255, 0, 0, 0.96), rgba(184, 0, 0, 0.96));
+}
+
+.productOptionChoices button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.optionError {
+  margin: 0;
+  color: #ff8c8c;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
 .modalControls {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1653,7 +1727,7 @@ svg {
   grid-area: 1 / 1;
   justify-self: end;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   width: min(460px, 100%);
   height: 100%;
   overflow: hidden;
@@ -1694,8 +1768,12 @@ svg {
 }
 
 .cartItems {
-  overflow: auto;
   padding: 12px 18px;
+}
+
+.cartContent {
+  min-height: 0;
+  overflow: auto;
 }
 
 .cartItem {
@@ -1708,9 +1786,19 @@ svg {
 }
 
 .cartItem span {
+  display: block;
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.84rem;
+}
+
+.cartItemOptions {
+  display: block;
+  margin-top: 5px;
+  color: #ffb3b3;
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .stepper {
@@ -1793,10 +1881,12 @@ svg {
 
 .checkoutForm {
   display: grid;
-  gap: 12px;
-  padding: 0 18px 18px;
+  gap: 14px;
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--line);
 }
 
+.checkoutField,
 .checkoutForm label {
   display: grid;
   gap: 6px;
@@ -1805,7 +1895,84 @@ svg {
   font-weight: 900;
 }
 
+.checkoutFieldGrid,
+.checkoutAddressGrid,
+.checkoutDeliveryGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.checkoutFieldGrid {
+  grid-template-columns: 1fr;
+}
+
+.checkoutAddressGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.checkoutDeliveryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.deliveryTimingGroup {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.deliveryTimingGroup legend {
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.deliveryTimingOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.deliveryTimingOption {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  cursor: pointer;
+}
+
+.deliveryTimingOption:has(input:checked) {
+  border-color: var(--brand);
+  background: rgba(255, 0, 0, 0.14);
+}
+
+.deliveryTimingOption input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--brand);
+}
+
+.deliveryTimingOption span {
+  min-width: 0;
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
 .checkoutForm input,
+.checkoutForm select,
 .checkoutForm textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -1817,13 +1984,68 @@ svg {
   resize: vertical;
 }
 
+.checkoutForm select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, #fff 50%) right 15px top 17px / 7px 7px no-repeat,
+    linear-gradient(135deg, #fff 50%, transparent 50%) right 10px top 17px / 7px 7px no-repeat,
+    rgba(255, 255, 255, 0.04);
+  padding-right: 34px;
+}
+
+.checkoutForm option {
+  background: #141111;
+  color: #fff;
+}
+
+.checkoutForm input[type="date"],
+.checkoutForm input[type="time"] {
+  min-height: 43px;
+  color-scheme: dark;
+}
+
 .checkoutForm input:focus,
+.checkoutForm select:focus,
 .checkoutForm textarea:focus {
   border-color: var(--brand);
   box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.16);
 }
 
-.checkoutForm button {
+.checkoutForm input[aria-invalid="true"],
+.checkoutForm select[aria-invalid="true"],
+.privacyCheck input[aria-invalid="true"] {
+  border-color: rgba(255, 114, 114, 0.75);
+}
+
+.privacyCheck {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: start;
+  gap: 10px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.privacyCheck input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  border-radius: 4px;
+  accent-color: var(--brand);
+}
+
+.privacyCheck a {
+  color: #fff;
+  font-weight: 1000;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.34);
+  text-underline-offset: 3px;
+}
+
+.checkoutForm button,
+.cartCheckoutBar button,
+.orderSuccess button {
   min-height: 46px;
   border: 0;
   border-radius: 999px;
@@ -1833,9 +2055,72 @@ svg {
   font-weight: 900;
 }
 
-.checkoutForm button:disabled {
+.checkoutForm button:disabled,
+.cartCheckoutBar button:disabled {
   cursor: not-allowed;
   background: #737388;
+}
+
+.cartCheckoutBar {
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--line);
+  background: rgba(20, 17, 17, 0.96);
+}
+
+.cartCheckoutBar button {
+  width: 100%;
+}
+
+.fieldError {
+  display: block;
+  margin: 2px 0 0;
+  color: #ff8c8c;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.orderSuccess {
+  display: grid;
+  gap: 10px;
+  margin: 16px 18px 18px;
+  padding: 16px;
+  border: 1px solid rgba(87, 211, 145, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(87, 211, 145, 0.14), rgba(255, 255, 255, 0.04)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.orderSuccess span {
+  color: var(--ok);
+  font-size: 0.78rem;
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orderSuccess strong {
+  color: #fff;
+  font-size: 1.1rem;
+  word-break: break-word;
+}
+
+.orderSuccess p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.orderSuccess div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.orderSuccess .secondaryCheckoutButton {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .formNote {
@@ -1866,6 +2151,13 @@ svg {
 .addToast span {
   font-weight: 900;
   line-height: 1.35;
+}
+
+.addToast small {
+  display: block;
+  margin-top: 4px;
+  color: #ffb3b3;
+  font-size: 0.78rem;
 }
 
 .addToast button {
@@ -2375,12 +2667,20 @@ svg {
   }
 
   .modalControls,
-  .modalSwitchers {
+  .modalSwitchers,
+  .checkoutAddressGrid,
+  .checkoutDeliveryGrid,
+  .deliveryTimingOptions {
     grid-template-columns: 1fr;
   }
 
   .modalQuantity {
     justify-content: center;
+  }
+
+  .productOptionChoices {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .productModalLayer {

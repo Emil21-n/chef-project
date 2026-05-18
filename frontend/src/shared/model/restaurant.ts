@@ -1,3 +1,22 @@
+export type ProductOption = {
+  id: string;
+  label: string;
+};
+
+export type ProductOptionGroup = {
+  id: string;
+  label: string;
+  required: boolean;
+  options: ProductOption[];
+};
+
+export type SelectedProductOption = {
+  groupId: string;
+  groupLabel: string;
+  optionId: string;
+  optionLabel: string;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -6,6 +25,7 @@ export type Product = {
   description: string;
   image?: string;
   isAvailable: boolean;
+  optionGroups?: ProductOptionGroup[];
 };
 
 export type MenuSection = {

@@ -15,7 +15,7 @@ import { SiteHeader } from "@/layouts/SiteHeader";
 import { ContactsSection } from "@/sections/ContactsSection";
 import { FeatureBand } from "@/sections/FeatureBand";
 import { HeroSection } from "@/sections/HeroSection";
-import type { RestaurantData } from "@/shared/model/restaurant";
+import type { RestaurantData, SelectedProductOption } from "@/shared/model/restaurant";
 
 type RestaurantPageProps = {
   data: RestaurantData;
@@ -28,9 +28,18 @@ export function RestaurantPage({ data }: RestaurantPageProps) {
   const productPreview = useProductModal(menuCatalog.displayedProducts);
   const cart = useCart();
 
-  const addProductFromModal = (product: ProductWithSection, quantity: number) => {
-    cart.addProduct(product, quantity);
-    productPreview.closeProductModal();
+  const addProductFromModal = (
+    product: ProductWithSection,
+    quantity: number,
+    selectedOptions: SelectedProductOption[]
+  ) => {
+    const added = cart.addProduct(product, quantity, selectedOptions);
+
+    if (added) {
+      productPreview.closeProductModal();
+    }
+
+    return added;
   };
 
   return (
@@ -81,7 +90,7 @@ export function RestaurantPage({ data }: RestaurantPageProps) {
         minOrder={minOrder}
         subtotal={cart.subtotal}
         onClose={cart.closeCart}
-        onAdd={cart.addToCart}
+        onAdd={cart.increaseCartItem}
         onRemove={cart.removeFromCart}
         onClear={cart.clearCart}
       />

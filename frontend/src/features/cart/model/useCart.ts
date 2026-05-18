@@ -2,8 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import {
+  buildCartItemKey,
+  getMissingRequiredOptionGroups
+} from "@/entities/product/model/options";
 import type { ProductWithSection } from "@/entities/product/model/types";
 import type { AddToastState, CartItem } from "@/features/cart/model/types";
+import type { SelectedProductOption } from "@/shared/model/restaurant";
 
 export function useCart() {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -22,57 +27,95 @@ export function useCart() {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const addToCart = (product: ProductWithSection, quantity = 1) => {
-    if (!product.isAvailable) return;
+  const addToCart = (
+    product: ProductWithSection,
+    quantity = 1,
+    selectedOptions: SelectedProductOption[] = []
+  ) => {
+    if (!product.isAvailable) return false;
+    if (getMissingRequiredOptionGroups(product, selectedOptions).length) return false;
+
+    const cartKey = buildCartItemKey(product.id, selectedOptions);
 
     setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
+      const existing = current.find((item) => item.cartKey === cartKey);
       if (existing) {
         return current.map((item) =>
-          item.id === product.id
+          item.cartKey === cartKey
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
 
-      return [...current, { ...product, quantity }];
+      return [...current, { ...product, cartKey, quantity, selectedOptions }];
     });
+
+    return true;
   };
 
-  const removeFromCart = (id: string, quantity = 1) => {
+  const increaseCartItem = (cartKey: string, quantity = 1) => {
+    setCart((current) =>
+      current.map((item) =>
+        item.cartKey === cartKey
+          ? { ...item, quantity: Math.min(item.quantity + quantity, 99) }
+          : item
+      )
+    );
+  };
+
+  const removeFromCart = (cartKey: string, quantity = 1) => {
     setCart((current) =>
       current
         .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - quantity } : item
+          item.cartKey === cartKey ? { ...item, quantity: item.quantity - quantity } : item
         )
         .filter((item) => item.quantity > 0)
     );
   };
 
-  const showAddToast = (product: ProductWithSection, quantity: number) => {
+  const showAddToast = (
+    product: ProductWithSection,
+    quantity: number,
+    selectedOptions: SelectedProductOption[]
+  ) => {
     if (!product.isAvailable) return;
 
     if (toastTimerRef.current) {
       window.clearTimeout(toastTimerRef.current);
     }
 
-    setAddToast({ product, quantity, id: Date.now() });
+    setAddToast({
+      product,
+      quantity,
+      selectedOptions,
+      cartKey: buildCartItemKey(product.id, selectedOptions),
+      id: Date.now()
+    });
     toastTimerRef.current = window.setTimeout(() => {
       setAddToast(null);
     }, 5000);
   };
 
-  const addProduct = (product: ProductWithSection, quantity = 1) => {
-    if (!product.isAvailable) return;
+  const addProduct = (
+    product: ProductWithSection,
+    quantity = 1,
+    selectedOptions: SelectedProductOption[] = []
+  ) => {
+    if (!product.isAvailable) return false;
 
-    addToCart(product, quantity);
-    showAddToast(product, quantity);
+    const added = addToCart(product, quantity, selectedOptions);
+
+    if (added) {
+      showAddToast(product, quantity, selectedOptions);
+    }
+
+    return added;
   };
 
   const undoLastAddition = () => {
     if (!addToast) return;
 
-    removeFromCart(addToast.product.id, addToast.quantity);
+    removeFromCart(addToast.cartKey, addToast.quantity);
     setAddToast(null);
 
     if (toastTimerRef.current) {
@@ -88,6 +131,7 @@ export function useCart() {
     cartOpen,
     clearCart: () => setCart([]),
     closeCart: () => setCartOpen(false),
+    increaseCartItem,
     openCart: () => setCartOpen(true),
     removeFromCart,
     subtotal,

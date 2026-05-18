@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+import {
+  buildSelectedProductOptions,
+  getMissingRequiredOptionGroups,
+  getProductOptionGroups
+} from "@/entities/product/model/options";
 import type { ProductWithSection } from "@/entities/product/model/types";
 import { ProductImage } from "@/entities/product/ui/ProductImage";
 import { formatPrice } from "@/shared/lib/format";
+import type { SelectedProductOption } from "@/shared/model/restaurant";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -20,7 +26,11 @@ type ProductModalProps = {
   onPrevious: () => void;
   onNext: () => void;
   onClose: () => void;
-  onAdd: (product: ProductWithSection, quantity: number) => void;
+  onAdd: (
+    product: ProductWithSection,
+    quantity: number,
+    selectedOptions: SelectedProductOption[]
+  ) => boolean;
 };
 
 export function ProductModal({
@@ -33,10 +43,15 @@ export function ProductModal({
   onAdd
 }: ProductModalProps) {
   const [quantity, setQuantity] = useState(1);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<Record<string, string>>({});
+  const [optionError, setOptionError] = useState("");
+  const optionGroups = getProductOptionGroups(product);
   const isUnavailable = !product.isAvailable;
 
   useEffect(() => {
     setQuantity(1);
+    setSelectedOptionIds({});
+    setOptionError("");
   }, [product.id]);
 
   useEffect(() => {
@@ -72,6 +87,7 @@ export function ProductModal({
 
   const decrease = () => setQuantity((current) => Math.max(current - 1, 1));
   const increase = () => setQuantity((current) => Math.min(current + 1, 99));
+  const selectedOptions = buildSelectedProductOptions(product, selectedOptionIds);
 
   return (
     <div className={`productModalLayer ${isOpen ? "isOpen" : ""}`} aria-hidden={!isOpen}>
@@ -110,6 +126,48 @@ export function ProductModal({
             </div>
           ) : null}
 
+          {optionGroups.length ? (
+            <div className="productOptions">
+              {optionGroups.map((group) => (
+                <div className="productOptionGroup" key={group.id}>
+                  <div className="productOptionHeader">
+                    <span>{group.label}</span>
+                    {group.required ? <small>Обязательно</small> : null}
+                  </div>
+                  <div className="productOptionChoices" aria-label={group.label}>
+                    {group.options.map((option) => {
+                      const isSelected = selectedOptionIds[group.id] === option.id;
+
+                      return (
+                        <button
+                          className={isSelected ? "isSelected" : ""}
+                          type="button"
+                          aria-pressed={isSelected}
+                          key={option.id}
+                          disabled={isUnavailable}
+                          onClick={() => {
+                            setSelectedOptionIds((current) => ({
+                              ...current,
+                              [group.id]: option.id
+                            }));
+                            setOptionError("");
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {optionError ? (
+                <p className="optionError" role="alert">
+                  {optionError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="modalControls">
             <div className="modalQuantity" aria-label={`Количество ${product.name}`}>
               <button
@@ -136,7 +194,22 @@ export function ProductModal({
               disabled={isUnavailable}
               onClick={() => {
                 if (isUnavailable) return;
-                onAdd(product, quantity);
+                const missingRequiredOptions = getMissingRequiredOptionGroups(
+                  product,
+                  selectedOptions
+                );
+
+                if (missingRequiredOptions.length) {
+                  setOptionError(
+                    `Выберите ${missingRequiredOptions[0].label.toLowerCase()} перед добавлением.`
+                  );
+                  return;
+                }
+
+                const added = onAdd(product, quantity, selectedOptions);
+                if (!added) {
+                  setOptionError("Не удалось добавить позицию. Проверьте выбранные параметры.");
+                }
               }}
             >
               {isUnavailable ? "Нет в наличии" : "Добавить в корзину"}
