@@ -9,6 +9,10 @@ import {
 
 import { formatSelectedOptions } from "@/entities/product/model/options";
 import type { CartItem } from "@/features/cart/model/types";
+import {
+  createCheckoutOrder,
+  CreateCheckoutOrderError
+} from "@/features/checkout/api/create-order";
 import { buildCheckoutOrder } from "@/features/checkout/model/build-order";
 import type { CheckoutOrder } from "@/features/checkout/model/types";
 import { formatPrice } from "@/shared/lib/format";
@@ -202,6 +206,25 @@ function validateCheckoutForm(
   return errors;
 }
 
+function mapServerFieldErrors(fieldErrors: Record<string, string>) {
+  return Object.entries(fieldErrors).reduce<CheckoutFormErrors>(
+    (errors, [field, message]) => {
+      if (field === "customer.name") errors.name = message;
+      if (field === "customer.phone") errors.phone = message;
+      if (field === "delivery.street") errors.street = message;
+      if (field === "delivery.house") errors.house = message;
+      if (field === "deliveryTime") errors.deliveryTime = message;
+      if (field === "privacyAgreement") errors.privacyAccepted = message;
+      if (field === "items" || field.startsWith("items.") || field === "totalAmount") {
+        errors.cart = message;
+      }
+
+      return errors;
+    },
+    {}
+  );
+}
+
 export function CartDrawer({
   cart,
   isOpen,
@@ -217,6 +240,8 @@ export function CartDrawer({
     useState<CheckoutFormState>(createInitialCheckoutForm);
   const [checkoutErrors, setCheckoutErrors] = useState<CheckoutFormErrors>({});
   const [submittedOrder, setSubmittedOrder] = useState<CheckoutOrder | null>(null);
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const deliveryDateMin = getDateInputValue();
   const safeMinOrder = Math.max(minOrder, 1);
   const remaining = Math.max(safeMinOrder - subtotal, 0);
@@ -266,6 +291,7 @@ export function CartDrawer({
       ...current,
       [fieldName]: value
     }));
+    setSubmitError("");
     clearFieldError(fieldName);
     if (fieldName === "deliveryTiming") {
       clearFieldError("deliveryDate");
@@ -280,11 +306,12 @@ export function CartDrawer({
     setSubmittedOrder(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const errors = validateCheckoutForm(checkoutForm, cart, subtotal, safeMinOrder);
     setCheckoutErrors(errors);
+    setSubmitError("");
 
     if (Object.keys(errors).length) {
       return;
@@ -303,6 +330,8 @@ export function CartDrawer({
       },
       delivery: {
         method: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
+        methodCode: checkoutForm.deliveryMethod,
+        methodLabel: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
         street: isPickup ? "" : checkoutForm.street.trim(),
         house: isPickup ? "" : checkoutForm.house.trim(),
         entrance: isPickup ? "" : checkoutForm.entrance.trim(),
@@ -316,8 +345,27 @@ export function CartDrawer({
       privacyAgreement: checkoutForm.privacyAccepted
     });
 
-    console.info("Chef's Choice checkout order draft", order);
-    setSubmittedOrder(order);
+    setIsSubmittingOrder(true);
+
+    try {
+      const createdOrder = await createCheckoutOrder(order);
+
+      console.info("Chef's Choice checkout order", createdOrder);
+      setSubmittedOrder(createdOrder);
+    } catch (error) {
+      if (error instanceof CreateCheckoutOrderError) {
+        setSubmitError(error.message);
+        setCheckoutErrors((current) => ({
+          ...current,
+          ...mapServerFieldErrors(error.fieldErrors)
+        }));
+        return;
+      }
+
+      setSubmitError("Не удалось создать заказ. Попробуйте еще раз.");
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   return (
@@ -407,12 +455,12 @@ export function CartDrawer({
 
           {submittedOrder ? (
             <div className="orderSuccess" role="status">
-              <span>Заказ создан локально</span>
-              <strong>{submittedOrder.id}</strong>
+              <span>Заказ создан</span>
+              <strong>{submittedOrder.orderNumber || submittedOrder.id}</strong>
               <p>
-                Данные заказа собраны и выведены в консоль. Сумма:
+                Мы приняли заказ. Сумма:
                 {" "}
-                {formatPrice(submittedOrder.totalAmount)}.
+                {formatPrice(submittedOrder.totalAmount)}. Оплата: ожидает.
               </p>
               <div>
                 <button type="button" onClick={onClose}>
@@ -425,6 +473,7 @@ export function CartDrawer({
                     onClear();
                     setCheckoutVisible(false);
                     setSubmittedOrder(null);
+                    setSubmitError("");
                     setCheckoutForm(createInitialCheckoutForm());
                   }}
                 >
@@ -435,7 +484,12 @@ export function CartDrawer({
           ) : null}
 
           {checkoutVisible && !submittedOrder ? (
-            <form className="checkoutForm" onSubmit={handleSubmit} noValidate>
+            <form
+              className="checkoutForm"
+              onSubmit={handleSubmit}
+              noValidate
+              aria-busy={isSubmittingOrder}
+            >
               <label className="checkoutField checkoutFieldWide">
                 Способ доставки
                 <select
@@ -632,8 +686,17 @@ export function CartDrawer({
                 <span className="fieldError">{checkoutErrors.privacyAccepted}</span>
               ) : null}
 
-              <button type="submit" disabled={!cart.length || subtotal < safeMinOrder}>
-                Заказать
+              {submitError ? (
+                <p className="fieldError" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={!cart.length || subtotal < safeMinOrder || isSubmittingOrder}
+              >
+                {isSubmittingOrder ? "Отправляем..." : "Заказать"}
               </button>
             </form>
           ) : null}
@@ -648,6 +711,7 @@ export function CartDrawer({
                 setCheckoutVisible(true);
                 setCheckoutErrors({});
                 setSubmittedOrder(null);
+                setSubmitError("");
               }}
             >
               Заказать

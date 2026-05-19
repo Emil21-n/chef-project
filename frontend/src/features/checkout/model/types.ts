@@ -6,8 +6,12 @@ export type CheckoutCustomer = {
   phone: string;
 };
 
+export type CheckoutDeliveryMethod = "pickup" | "delivery";
+
 export type CheckoutDelivery = {
   method: string;
+  methodCode?: CheckoutDeliveryMethod;
+  methodLabel?: string;
   street: string;
   house: string;
   entrance: string;
@@ -27,13 +31,41 @@ export type CheckoutOrderItem = {
   selectedOptions: SelectedProductOption[];
 };
 
+export type CheckoutOrderStatus =
+  | "created"
+  | "pending"
+  | "confirmed"
+  | "cancelled"
+  | "completed";
+
+export type CheckoutPaymentStatus =
+  | "unpaid"
+  | "pending"
+  | "paid"
+  | "failed"
+  | "cancelled"
+  | "refunded";
+
+export type CheckoutPayment = {
+  provider: "none" | "yookassa";
+  status: CheckoutPaymentStatus;
+  redirectUrl: string | null;
+  externalPaymentId?: string | null;
+};
+
 export type CheckoutOrder = {
   id: string;
+  orderNumber?: string;
+  strapiDocumentId?: string;
   customer: CheckoutCustomer;
   delivery: CheckoutDelivery;
   deliveryTime: string;
   items: CheckoutOrderItem[];
   totalAmount: number;
+  currency?: string;
+  status?: CheckoutOrderStatus;
+  paymentStatus?: CheckoutPaymentStatus;
+  payment?: CheckoutPayment;
   privacyAgreement: boolean;
   createdAt: string;
 };

@@ -1,0 +1,96 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders",
+  "info": {
+    "singularName": "order",
+    "pluralName": "orders",
+    "displayName": "Order",
+    "description": "Checkout order snapshot prepared for payment provider integration"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "orderNumber": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "orderStatus": {
+      "type": "enumeration",
+      "enum": [
+        "created",
+        "pending",
+        "confirmed",
+        "cancelled",
+        "completed"
+      ],
+      "default": "created",
+      "required": true
+    },
+    "paymentStatus": {
+      "type": "enumeration",
+      "enum": [
+        "unpaid",
+        "pending",
+        "paid",
+        "failed",
+        "cancelled",
+        "refunded"
+      ],
+      "default": "unpaid",
+      "required": true
+    },
+    "paymentProvider": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "yookassa"
+      ],
+      "default": "none",
+      "required": true
+    },
+    "currency": {
+      "type": "string",
+      "default": "RUB",
+      "required": true
+    },
+    "totalAmount": {
+      "type": "integer",
+      "required": true
+    },
+    "customer": {
+      "type": "json",
+      "required": true
+    },
+    "delivery": {
+      "type": "json",
+      "required": true
+    },
+    "deliveryTime": {
+      "type": "string",
+      "required": true
+    },
+    "items": {
+      "type": "json",
+      "required": true
+    },
+    "pricingSnapshot": {
+      "type": "json"
+    },
+    "privacyAgreement": {
+      "type": "boolean",
+      "required": true
+    },
+    "source": {
+      "type": "string",
+      "default": "web"
+    },
+    "payment": {
+      "type": "json"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}
