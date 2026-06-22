@@ -1922,6 +1922,86 @@ svg {
   border: 0;
 }
 
+.paymentMethodGroup {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.paymentMethodGroup legend {
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.paymentMethodOptions {
+  display: grid;
+  gap: 10px;
+}
+
+.paymentMethodOption {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--brand);
+  border-radius: 12px;
+  background: rgba(255, 0, 0, 0.11);
+  color: #fff;
+  cursor: pointer;
+}
+
+.paymentMethodOption input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--brand);
+}
+
+.paymentMethodOption span {
+  display: grid;
+  gap: 4px;
+}
+
+.paymentMethodOption strong {
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.paymentMethodOption small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.paymentMethodOption em {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.paymentMethodOption.isDisabled {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .deliveryTimingGroup legend {
   margin: 0 0 8px;
   padding: 0;

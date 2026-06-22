@@ -66,6 +66,9 @@ export type CheckoutOrder = {
   status?: CheckoutOrderStatus;
   paymentStatus?: CheckoutPaymentStatus;
   payment?: CheckoutPayment;
+  notification?: {
+    email: "sent" | "failed";
+  };
   privacyAgreement: boolean;
   createdAt: string;
 };

@@ -458,9 +458,12 @@ export function CartDrawer({
               <span>Заказ создан</span>
               <strong>{submittedOrder.orderNumber || submittedOrder.id}</strong>
               <p>
-                Мы приняли заказ. Сумма:
+                {submittedOrder.notification?.email === "sent"
+                  ? "Мы приняли заказ и отправили его менеджеру."
+                  : "Мы приняли и сохранили заказ."}{" "}
+                Сумма:
                 {" "}
-                {formatPrice(submittedOrder.totalAmount)}. Оплата: ожидает.
+                {formatPrice(submittedOrder.totalAmount)}. Оплата при получении.
               </p>
               <div>
                 <button type="button" onClick={onClose}>
@@ -666,6 +669,28 @@ export function CartDrawer({
                   </label>
                 </div>
               ) : null}
+
+              <fieldset className="paymentMethodGroup">
+                <legend>Способ оплаты</legend>
+                <div className="paymentMethodOptions">
+                  <label className="paymentMethodOption">
+                    <input type="radio" name="paymentMethod" defaultChecked />
+                    <span>
+                      <strong>При получении</strong>
+                      <small>Наличными или переводом после подтверждения заказа</small>
+                    </span>
+                  </label>
+                  <label className="paymentMethodOption isDisabled">
+                    <input type="radio" name="paymentMethod" disabled />
+                    <span>
+                      <strong>
+                        Онлайн через ЮKassa <em>Скоро</em>
+                      </strong>
+                      <small>Банковской картой или СБП на сайте</small>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
 
               <label className="privacyCheck">
                 <input

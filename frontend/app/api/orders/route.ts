@@ -9,6 +9,7 @@ import type {
   CheckoutOrder,
   CheckoutOrderItem
 } from "@/features/checkout/model/types";
+import { sendOrderEmail } from "@/features/checkout/server/send-order-email";
 import {
   booleanValue,
   fetchFromStrapi,
@@ -513,9 +514,19 @@ export async function POST(request: Request) {
     });
     const savedRecord = unwrapRecord(unwrapData(createResponse));
 
+    const savedOrder = buildOrderResponse(savedRecord, order);
+
+    try {
+      await sendOrderEmail(savedOrder);
+      savedOrder.notification = { email: "sent" };
+    } catch (emailError) {
+      savedOrder.notification = { email: "failed" };
+      console.error("Unable to send order notification email", emailError);
+    }
+
     return NextResponse.json(
       {
-        order: buildOrderResponse(savedRecord, order)
+        order: savedOrder
       },
       { status: 201 }
     );
