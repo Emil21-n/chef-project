@@ -13,15 +13,51 @@ type MailConfig = {
   recipient: string;
 };
 
+type MailErrorDetails = {
+  name?: string;
+  message: string;
+  code?: string;
+  command?: string;
+  syscall?: string;
+  errno?: string | number;
+  address?: string;
+  port?: number;
+  responseCode?: number;
+};
+
+class MailConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MailConfigurationError";
+  }
+}
+
 function getMailConfig(): MailConfig {
   const host = process.env.SMTP_HOST?.trim();
-  const port = Number(process.env.SMTP_PORT || 465);
+  const rawPort = process.env.SMTP_PORT || "465";
+  const port = Number(rawPort);
   const user = process.env.SMTP_USER?.trim();
   const password = process.env.SMTP_PASSWORD;
   const recipient = process.env.ORDER_NOTIFICATION_EMAIL?.trim() || user;
+  const missing = [
+    !host ? "SMTP_HOST" : "",
+    !user ? "SMTP_USER" : "",
+    !password ? "SMTP_PASSWORD" : "",
+    !recipient ? "ORDER_NOTIFICATION_EMAIL" : ""
+  ].filter(Boolean);
 
-  if (!host || !user || !password || !recipient || !Number.isInteger(port)) {
-    throw new Error("SMTP is not configured");
+  if (missing.length > 0) {
+    throw new MailConfigurationError(
+      `SMTP is not configured. Missing environment variables: ${missing.join(", ")}`
+    );
+  }
+
+  if (!host || !user || !password || !recipient) {
+    throw new MailConfigurationError("SMTP is not configured.");
+  }
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new MailConfigurationError(`SMTP_PORT must be a valid TCP port. Current value: ${rawPort}`);
   }
 
   return {
@@ -31,6 +67,34 @@ function getMailConfig(): MailConfig {
     user,
     password,
     recipient
+  };
+}
+
+export function getOrderEmailErrorDetails(error: unknown): MailErrorDetails {
+  if (!(error instanceof Error)) {
+    return { message: String(error) };
+  }
+
+  const smtpError = error as Error & {
+    code?: string;
+    command?: string;
+    syscall?: string;
+    errno?: string | number;
+    address?: string;
+    port?: number;
+    responseCode?: number;
+  };
+
+  return {
+    name: smtpError.name,
+    message: smtpError.message,
+    code: smtpError.code,
+    command: smtpError.command,
+    syscall: smtpError.syscall,
+    errno: smtpError.errno,
+    address: smtpError.address,
+    port: smtpError.port,
+    responseCode: smtpError.responseCode
   };
 }
 

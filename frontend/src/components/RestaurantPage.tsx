@@ -60,10 +60,13 @@ export function RestaurantPage({ data }: RestaurantPageProps) {
         <MenuCatalog
           activeSection={menuCatalog.activeSection}
           catalogRef={menuCatalog.catalogRef}
+          cart={cart.cart}
           displayedSections={menuCatalog.displayedSections}
           menuSections={menuSections}
           query={menuCatalog.query}
           onCategorySelect={menuCatalog.selectCategory}
+          onCartItemDecrease={cart.removeFromCart}
+          onCartItemIncrease={cart.increaseCartItem}
           onProductAdd={cart.addProduct}
           onProductOpen={productPreview.openProductModal}
           onQueryChange={menuCatalog.setQuery}

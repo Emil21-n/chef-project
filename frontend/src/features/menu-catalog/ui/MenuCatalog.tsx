@@ -7,16 +7,20 @@ import type {
   ProductWithSection
 } from "@/entities/product/model/types";
 import { ProductCard } from "@/entities/product/ui/ProductCard";
+import type { CartItem } from "@/features/cart/model/types";
 import type { MenuSection } from "@/shared/model/restaurant";
 import { SearchIcon } from "@/shared/ui/icons";
 
 type MenuCatalogProps = {
   activeSection: string;
   catalogRef: RefObject<HTMLDivElement | null>;
+  cart: CartItem[];
   displayedSections: MenuSectionWithProducts[];
   menuSections: MenuSection[];
   query: string;
   onCategorySelect: (id: string) => void;
+  onCartItemDecrease: (cartKey: string) => void;
+  onCartItemIncrease: (cartKey: string) => void;
   onProductAdd: (product: ProductWithSection) => void;
   onProductOpen: (product: ProductWithSection) => void;
   onQueryChange: (value: string) => void;
@@ -25,10 +29,13 @@ type MenuCatalogProps = {
 export function MenuCatalog({
   activeSection,
   catalogRef,
+  cart,
   displayedSections,
   menuSections,
   query,
   onCategorySelect,
+  onCartItemDecrease,
+  onCartItemIncrease,
   onProductAdd,
   onProductOpen,
   onQueryChange
@@ -102,14 +109,21 @@ export function MenuCatalog({
                   <span>{section.products.length} поз.</span>
                 </div>
                 <div className="productGrid">
-                  {section.products.map((product) => (
-                    <ProductCard
-                      product={product}
-                      onOpen={onProductOpen}
-                      onAdd={onProductAdd}
-                      key={product.id}
-                    />
-                  ))}
+                  {section.products.map((product) => {
+                    const cartItem = cart.find((item) => item.cartKey === product.id);
+
+                    return (
+                      <ProductCard
+                        product={product}
+                        cartItem={cartItem}
+                        onOpen={onProductOpen}
+                        onAdd={onProductAdd}
+                        onDecrease={onCartItemDecrease}
+                        onIncrease={onCartItemIncrease}
+                        key={product.id}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             ))

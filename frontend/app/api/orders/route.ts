@@ -9,7 +9,10 @@ import type {
   CheckoutOrder,
   CheckoutOrderItem
 } from "@/features/checkout/model/types";
-import { sendOrderEmail } from "@/features/checkout/server/send-order-email";
+import {
+  getOrderEmailErrorDetails,
+  sendOrderEmail
+} from "@/features/checkout/server/send-order-email";
 import {
   booleanValue,
   fetchFromStrapi,
@@ -28,6 +31,7 @@ import type {
 } from "@/shared/model/restaurant";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const CURRENCY = "RUB";
 const SOURCE = "web";
@@ -521,7 +525,10 @@ export async function POST(request: Request) {
       savedOrder.notification = { email: "sent" };
     } catch (emailError) {
       savedOrder.notification = { email: "failed" };
-      console.error("Unable to send order notification email", emailError);
+      console.error(
+        "Unable to send order notification email",
+        getOrderEmailErrorDetails(emailError)
+      );
     }
 
     return NextResponse.json(

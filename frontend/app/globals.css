@@ -969,7 +969,7 @@ svg {
   font-size: 1.05rem;
 }
 
-.productFooter button {
+.productAddButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -985,21 +985,65 @@ svg {
   font-weight: 900;
 }
 
-.productFooter button:hover,
-.productFooter button:focus-visible {
+.productAddButton:hover,
+.productAddButton:focus-visible {
   filter: brightness(1.08);
   outline: none;
 }
 
-.productFooter button:disabled {
+.productAddButton:disabled {
   cursor: not-allowed;
   background: rgba(255, 255, 255, 0.11);
   color: rgba(255, 255, 255, 0.58);
 }
 
-.productFooter button:disabled:hover,
-.productFooter button:disabled:focus-visible {
+.productAddButton:disabled:hover,
+.productAddButton:disabled:focus-visible {
   filter: none;
+}
+
+.productAddButton svg,
+.productCardStepper svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.productCardStepper {
+  display: grid;
+  grid-template-columns: 40px minmax(36px, auto) 40px;
+  align-items: center;
+  min-height: 40px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 0, 0, 0.52);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(184, 0, 0, 0.16)),
+    rgba(255, 255, 255, 0.04);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.productCardStepper button {
+  display: grid;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.productCardStepper button:hover,
+.productCardStepper button:focus-visible {
+  background: rgba(255, 0, 0, 0.22);
+  outline: none;
+}
+
+.productCardStepper span {
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 1000;
 }
 
 .productModalLayer {
@@ -2799,7 +2843,8 @@ svg {
     width: auto;
   }
 
-  .productFooter button,
+  .productAddButton,
+  .productCardStepper,
   .modalAddButton,
   .cartPanel {
     width: 100%;
