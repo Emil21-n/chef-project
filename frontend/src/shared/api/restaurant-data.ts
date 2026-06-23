@@ -11,6 +11,7 @@ import {
   describeError,
   fetchFromStrapi,
   getStrapiApiUrl,
+  getStrapiPublicUrl,
   numberValue,
   stringValue,
   type StrapiRecord,
@@ -186,6 +187,7 @@ function mapContactInfo(record: StrapiRecord): ContactInfo {
 
 async function getRestaurantDataFromStrapi(): Promise<RestaurantData> {
   const strapiUrl = getStrapiApiUrl();
+  const strapiPublicUrl = getStrapiPublicUrl();
   const menuParams = new URLSearchParams({
     "sort[0]": "sortOrder:asc",
     "pagination[pageSize]": "100"
@@ -222,7 +224,7 @@ async function getRestaurantDataFromStrapi(): Promise<RestaurantData> {
       const sectionId = getProductSectionId(productRecord);
       const products = sections.get(sectionId) || [];
 
-      products.push(mapProduct(productRecord, strapiUrl));
+      products.push(mapProduct(productRecord, strapiPublicUrl));
       sections.set(sectionId, products);
 
       return sections;
@@ -239,7 +241,7 @@ async function getRestaurantDataFromStrapi(): Promise<RestaurantData> {
     })
     .filter((section) => section.title && section.products.length);
   const heroSlides = unwrapCollection(heroResponse)
-    .map((slide) => mapHeroSlide(slide, strapiUrl))
+    .map((slide) => mapHeroSlide(slide, strapiPublicUrl))
     .filter((slide) => slide.title && slide.image);
   const contactInfo = mapContactInfo(unwrapRecord(unwrapData(contactResponse)));
   const siteSetting = unwrapRecord(unwrapData(settingsResponse));

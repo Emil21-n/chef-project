@@ -22,6 +22,18 @@ export function getStrapiApiUrl() {
   return strapiUrl.replace(/\/$/, "");
 }
 
+export function getStrapiPublicUrl() {
+  const strapiPublicUrl =
+    process.env.NEXT_PUBLIC_STRAPI_PUBLIC_URL?.trim() ||
+    process.env.NEXT_PUBLIC_STRAPI_API_URL?.trim();
+
+  if (!strapiPublicUrl) {
+    throw new Error("Missing NEXT_PUBLIC_STRAPI_PUBLIC_URL environment variable.");
+  }
+
+  return strapiPublicUrl.replace(/\/$/, "");
+}
+
 export function unwrapRecord(value: unknown): StrapiRecord {
   if (!value || typeof value !== "object") return {};
 
