@@ -34,6 +34,7 @@ type CheckoutFormState = {
   deliveryTiming: "soon" | "scheduled";
   name: string;
   phone: string;
+  email: string;
   street: string;
   house: string;
   entrance: string;
@@ -109,6 +110,7 @@ function createInitialCheckoutForm(): CheckoutFormState {
     deliveryTiming: "soon",
     name: "",
     phone: "",
+    email: "",
     street: "",
     house: "",
     entrance: "",
@@ -182,6 +184,9 @@ function validateCheckoutForm(
   if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
     errors.phone = "Введите телефон в формате +7 (000) 000-00-00.";
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    errors.email = "Введите корректный email для получения чека.";
+  }
   if (form.deliveryMethod === "delivery") {
     if (!form.street.trim()) errors.street = "Укажите улицу.";
     if (!form.house.trim()) errors.house = "Укажите дом.";
@@ -211,6 +216,7 @@ function mapServerFieldErrors(fieldErrors: Record<string, string>) {
     (errors, [field, message]) => {
       if (field === "customer.name") errors.name = message;
       if (field === "customer.phone") errors.phone = message;
+      if (field === "customer.email") errors.email = message;
       if (field === "delivery.street") errors.street = message;
       if (field === "delivery.house") errors.house = message;
       if (field === "deliveryTime") errors.deliveryTime = message;
@@ -326,7 +332,8 @@ export function CartDrawer({
     const order = buildCheckoutOrder({
       customer: {
         name: checkoutForm.name.trim(),
-        phone: formatRussianPhone(checkoutForm.phone)
+        phone: formatRussianPhone(checkoutForm.phone),
+        email: checkoutForm.email.trim().toLowerCase()
       },
       delivery: {
         method: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
@@ -351,7 +358,19 @@ export function CartDrawer({
       const createdOrder = await createCheckoutOrder(order);
 
       console.info("Chef's Choice checkout order", createdOrder);
-      setSubmittedOrder(createdOrder);
+      const redirectUrl = createdOrder.payment?.redirectUrl;
+
+      if (redirectUrl) {
+        window.location.assign(redirectUrl);
+        return;
+      }
+
+      if (createdOrder.paymentStatus === "paid") {
+        window.location.assign(`/payment?order=${encodeURIComponent(createdOrder.orderNumber || createdOrder.id)}`);
+        return;
+      }
+
+      throw new Error("YooKassa did not return a payment confirmation URL.");
     } catch (error) {
       if (error instanceof CreateCheckoutOrderError) {
         setSubmitError(error.message);
@@ -458,12 +477,7 @@ export function CartDrawer({
               <span>Заказ создан</span>
               <strong>{submittedOrder.orderNumber || submittedOrder.id}</strong>
               <p>
-                {submittedOrder.notification?.email === "sent"
-                  ? "Мы приняли заказ и отправили его менеджеру."
-                  : "Мы приняли и сохранили заказ."}{" "}
-                Сумма:
-                {" "}
-                {formatPrice(submittedOrder.totalAmount)}. Оплата при получении.
+                Заказ оплачен онлайн. Сумма: {formatPrice(submittedOrder.totalAmount)}.
               </p>
               <div>
                 <button type="button" onClick={onClose}>
@@ -542,6 +556,23 @@ export function CartDrawer({
                   ) : null}
                 </label>
               </div>
+
+              <label className="checkoutField checkoutFieldWide">
+                Email для чека
+                <input
+                  name="email"
+                  type="email"
+                  value={checkoutForm.email}
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="name@example.ru"
+                  onChange={handleCheckoutChange}
+                  aria-invalid={Boolean(checkoutErrors.email)}
+                />
+                {checkoutErrors.email ? (
+                  <span className="fieldError">{checkoutErrors.email}</span>
+                ) : null}
+              </label>
 
               {checkoutForm.deliveryMethod === "delivery" ? (
                 <>
@@ -676,17 +707,8 @@ export function CartDrawer({
                   <label className="paymentMethodOption">
                     <input type="radio" name="paymentMethod" defaultChecked />
                     <span>
-                      <strong>При получении</strong>
-                      <small>Наличными или переводом после подтверждения заказа</small>
-                    </span>
-                  </label>
-                  <label className="paymentMethodOption isDisabled">
-                    <input type="radio" name="paymentMethod" disabled />
-                    <span>
-                      <strong>
-                        Онлайн через ЮKassa <em>Скоро</em>
-                      </strong>
-                      <small>Банковской картой или СБП на сайте</small>
+                      <strong>Онлайн через ЮKassa</strong>
+                      <small>Банковской картой, СБП или другим доступным способом</small>
                     </span>
                   </label>
                 </div>
@@ -721,7 +743,7 @@ export function CartDrawer({
                 type="submit"
                 disabled={!cart.length || subtotal < safeMinOrder || isSubmittingOrder}
               >
-                {isSubmittingOrder ? "Отправляем..." : "Заказать"}
+                {isSubmittingOrder ? "Переходим к оплате..." : "Оплатить онлайн"}
               </button>
             </form>
           ) : null}

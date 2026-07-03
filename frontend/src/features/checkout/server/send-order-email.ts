@@ -152,6 +152,7 @@ function buildText(order: CheckoutOrder) {
     `Новый заказ ${orderNumber}`,
     `Клиент: ${order.customer.name}`,
     `Телефон: ${order.customer.phone}`,
+    `Email: ${order.customer.email}`,
     `Способ получения: ${order.delivery.methodLabel || order.delivery.method}`,
     `Адрес: ${getAddress(order)}`,
     `Время: ${order.deliveryTime}`,
@@ -159,7 +160,7 @@ function buildText(order: CheckoutOrder) {
     "Состав заказа:",
     items,
     `Итого: ${formatPrice(order.totalAmount)}`,
-    "Оплата: при получении",
+    "Оплата: оплачено онлайн через ЮKassa",
     `Создан: ${new Intl.DateTimeFormat("ru-RU", {
       dateStyle: "medium",
       timeStyle: "short",
@@ -206,11 +207,12 @@ function buildHtml(order: CheckoutOrder) {
             <table role="presentation" style="width:100%;border-collapse:collapse;font-size:15px">
               ${detail("Клиент", order.customer.name)}
               ${detail("Телефон", order.customer.phone)}
+              ${detail("Email", order.customer.email)}
               ${detail("Получение", order.delivery.methodLabel || order.delivery.method)}
               ${detail("Адрес", getAddress(order))}
               ${detail("Время", order.deliveryTime)}
               ${order.delivery.comment ? detail("Комментарий", order.delivery.comment) : ""}
-              ${detail("Оплата", "При получении")}
+              ${detail("Оплата", "Оплачено онлайн через ЮKassa")}
             </table>
 
             <h2 style="margin:28px 0 4px;font-size:18px">Состав заказа</h2>

@@ -4,6 +4,7 @@ import type { SelectedProductOption } from "@/shared/model/restaurant";
 export type CheckoutCustomer = {
   name: string;
   phone: string;
+  email: string;
 };
 
 export type CheckoutDeliveryMethod = "pickup" | "delivery";
@@ -51,6 +52,8 @@ export type CheckoutPayment = {
   status: CheckoutPaymentStatus;
   redirectUrl: string | null;
   externalPaymentId?: string | null;
+  test?: boolean;
+  receiptRegistration?: string | null;
 };
 
 export type CheckoutOrder = {

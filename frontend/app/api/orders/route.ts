@@ -10,9 +10,11 @@ import type {
   CheckoutOrderItem
 } from "@/features/checkout/model/types";
 import {
-  getOrderEmailErrorDetails,
-  sendOrderEmail
-} from "@/features/checkout/server/send-order-email";
+  createYooKassaPayment,
+  getCheckoutOrderStatus,
+  getCheckoutPaymentStatus
+} from "@/features/payment/server/yookassa";
+import { reconcileYooKassaPayment } from "@/features/payment/server/payment-orders";
 import {
   booleanValue,
   fetchFromStrapi,
@@ -56,6 +58,7 @@ type NormalizedDraft = {
   customer: {
     name: string;
     phone: string;
+    email: string;
   };
   delivery: {
     methodCode: CheckoutDeliveryMethod;
@@ -130,6 +133,7 @@ function normalizeDraft(value: unknown) {
   const items = Array.isArray(record.items) ? record.items : [];
   const name = trimString(customer?.name, 80);
   const phone = trimString(customer?.phone, 40);
+  const email = trimString(customer?.email, 160).toLowerCase();
   const phoneDigits = phone.replace(/\D/g, "");
   const deliveryLabel = trimString(delivery?.methodLabel, 160) || trimString(delivery?.method, 160);
   const methodCode = normalizeDeliveryMethod(delivery?.methodCode, deliveryLabel);
@@ -165,6 +169,9 @@ function normalizeDraft(value: unknown) {
   if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
     errors["customer.phone"] = "Введите телефон в формате +7 (000) 000-00-00.";
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors["customer.email"] = "Введите корректный email для получения чека.";
+  }
   if (methodCode === "delivery") {
     if (!trimString(delivery?.street, 160)) errors["delivery.street"] = "Укажите улицу.";
     if (!trimString(delivery?.house, 40)) errors["delivery.house"] = "Укажите дом.";
@@ -181,7 +188,8 @@ function normalizeDraft(value: unknown) {
   const normalized: NormalizedDraft = {
     customer: {
       name,
-      phone
+      phone,
+      email
     },
     delivery: {
       methodCode,
@@ -519,16 +527,51 @@ export async function POST(request: Request) {
     const savedRecord = unwrapRecord(unwrapData(createResponse));
 
     const savedOrder = buildOrderResponse(savedRecord, order);
+    const orderDocumentId = savedOrder.strapiDocumentId;
 
-    try {
-      await sendOrderEmail(savedOrder);
-      savedOrder.notification = { email: "sent" };
-    } catch (emailError) {
-      savedOrder.notification = { email: "failed" };
-      console.error(
-        "Unable to send order notification email",
-        getOrderEmailErrorDetails(emailError)
-      );
+    if (!orderDocumentId) {
+      throw new Error("Strapi did not return an order document id.");
+    }
+
+    const yooKassaPayment = await createYooKassaPayment({
+      orderNumber,
+      orderDocumentId,
+      customer: {
+        email: savedOrder.customer.email
+      },
+      items: savedOrder.items,
+      totalAmount: savedOrder.totalAmount
+    });
+    const paymentStatus = getCheckoutPaymentStatus(yooKassaPayment);
+    const orderStatus = getCheckoutOrderStatus(yooKassaPayment);
+    const payment = {
+      provider: "yookassa" as const,
+      status: paymentStatus,
+      redirectUrl: yooKassaPayment.confirmation?.confirmation_url || null,
+      externalPaymentId: yooKassaPayment.id,
+      test: yooKassaPayment.test,
+      receiptRegistration: yooKassaPayment.receipt_registration || null,
+      createdAt: yooKassaPayment.created_at || createdAt
+    };
+
+    await fetchFromStrapi(`/api/orders/${encodeURIComponent(orderDocumentId)}`, undefined, {
+      method: "PUT",
+      body: JSON.stringify({
+        data: {
+          orderStatus,
+          paymentStatus,
+          paymentProvider: "yookassa",
+          payment
+        }
+      })
+    });
+
+    savedOrder.status = orderStatus;
+    savedOrder.paymentStatus = paymentStatus;
+    savedOrder.payment = payment;
+
+    if (paymentStatus === "paid") {
+      await reconcileYooKassaPayment(yooKassaPayment);
     }
 
     return NextResponse.json(

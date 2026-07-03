@@ -2254,6 +2254,92 @@ svg {
   font-weight: 800;
 }
 
+.paymentResultPage {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(255, 0, 0, 0.2), transparent 42%),
+    var(--bg);
+}
+
+.paymentResultCard {
+  display: grid;
+  width: min(560px, 100%);
+  gap: 14px;
+  padding: 34px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(20, 17, 17, 0.94);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.paymentResultCard > span {
+  color: #ff8c8c;
+  font-size: 0.78rem;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.paymentResultCard.is-paid {
+  border-color: rgba(87, 211, 145, 0.42);
+}
+
+.paymentResultCard.is-paid > span {
+  color: var(--ok);
+}
+
+.paymentResultCard h1,
+.paymentResultCard p {
+  margin: 0;
+}
+
+.paymentResultCard h1 {
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+}
+
+.paymentResultCard > strong {
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+
+.paymentResultCard p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.paymentResultCard div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.paymentResultCard a,
+.paymentResultCard button {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.paymentResultCard a {
+  border: 0;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+}
+
 .addToast {
   position: fixed;
   right: 18px;
