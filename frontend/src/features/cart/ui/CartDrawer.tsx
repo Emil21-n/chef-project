@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
   type ChangeEvent,
   type FormEvent
@@ -13,7 +14,10 @@ import {
   createCheckoutOrder,
   CreateCheckoutOrderError
 } from "@/features/checkout/api/create-order";
-import { buildCheckoutOrder } from "@/features/checkout/model/build-order";
+import {
+  buildCheckoutOrder,
+  createCheckoutOrderNumber
+} from "@/features/checkout/model/build-order";
 import type { CheckoutOrder } from "@/features/checkout/model/types";
 import { formatPrice } from "@/shared/lib/format";
 import { CloseIcon, MinusIcon, PlusIcon } from "@/shared/ui/icons";
@@ -60,6 +64,57 @@ const DELIVERY_TIMING_OPTIONS = [
   { value: "soon", label: "Как можно скорее" },
   { value: "scheduled", label: "Дата и время" }
 ] as const;
+const CHECKOUT_ATTEMPT_STORAGE_KEY = "chefs-choice.checkout-attempt";
+
+function fingerprintCheckoutAttempt(value: string) {
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ code, 0x85ebca6b);
+  }
+
+  return `${(first >>> 0).toString(16).padStart(8, "0")}${
+    (second >>> 0).toString(16).padStart(8, "0")
+  }-${value.length}`;
+}
+
+function readStoredCheckoutOrderNumber(fingerprint: string) {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(CHECKOUT_ATTEMPT_STORAGE_KEY) || "null") as {
+      fingerprint?: string;
+      orderNumber?: string;
+    } | null;
+
+    return stored?.fingerprint === fingerprint &&
+      /^CC-\d{8}-(?:[A-F0-9]{8}|[A-F0-9]{32})$/.test(stored.orderNumber || "")
+      ? stored.orderNumber || ""
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+function storeCheckoutAttempt(fingerprint: string, orderNumber: string) {
+  try {
+    sessionStorage.setItem(
+      CHECKOUT_ATTEMPT_STORAGE_KEY,
+      JSON.stringify({ fingerprint, orderNumber })
+    );
+  } catch {
+    // The in-memory ref still protects ordinary retries when storage is unavailable.
+  }
+}
+
+function clearStoredCheckoutAttempt() {
+  try {
+    sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in hardened browser modes.
+  }
+}
 
 function getDeliveryMethodLabel(method: DeliveryMethod) {
   return method === "pickup" ? PICKUP_METHOD_LABEL : DELIVERY_METHOD_LABEL;
@@ -248,6 +303,7 @@ export function CartDrawer({
   const [submittedOrder, setSubmittedOrder] = useState<CheckoutOrder | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const checkoutOrderNumberRef = useRef("");
   const deliveryDateMin = getDateInputValue();
   const safeMinOrder = Math.max(minOrder, 1);
   const remaining = Math.max(safeMinOrder - subtotal, 0);
@@ -270,6 +326,10 @@ export function CartDrawer({
     setSubmittedOrder(null);
   }, [cart.length]);
 
+  useEffect(() => {
+    checkoutOrderNumberRef.current = "";
+  }, [cart]);
+
   const clearFieldError = (field: keyof CheckoutFormState | "cart") => {
     setCheckoutErrors((current) => {
       const next = { ...current };
@@ -284,6 +344,8 @@ export function CartDrawer({
   const handleCheckoutChange = (
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
+    if (isSubmittingOrder) return;
+
     const { name } = event.target;
     const fieldName = name as keyof CheckoutFormState;
     const value =
@@ -310,6 +372,7 @@ export function CartDrawer({
       clearFieldError("deliveryTime");
     }
     setSubmittedOrder(null);
+    checkoutOrderNumberRef.current = "";
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -328,24 +391,46 @@ export function CartDrawer({
       checkoutForm.deliveryTiming === "soon"
         ? "Как можно скорее"
         : formatDeliveryDateTime(checkoutForm.deliveryDate, checkoutForm.deliveryTime);
-
+    const customer = {
+      name: checkoutForm.name.trim(),
+      phone: formatRussianPhone(checkoutForm.phone),
+      email: checkoutForm.email.trim().toLowerCase()
+    };
+    const delivery = {
+      method: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
+      methodCode: checkoutForm.deliveryMethod,
+      methodLabel: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
+      street: isPickup ? "" : checkoutForm.street.trim(),
+      house: isPickup ? "" : checkoutForm.house.trim(),
+      entrance: isPickup ? "" : checkoutForm.entrance.trim(),
+      apartment: isPickup ? "" : checkoutForm.apartment.trim(),
+      floor: isPickup ? "" : checkoutForm.floor.trim(),
+      comment: checkoutForm.comment.trim()
+    };
+    const attemptFingerprint = fingerprintCheckoutAttempt(JSON.stringify({
+      customer,
+      delivery,
+      deliveryTime,
+      items: cart.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions.map((option) => ({
+          groupId: option.groupId,
+          optionId: option.optionId
+        }))
+      })),
+      totalAmount: subtotal,
+      privacyAgreement: checkoutForm.privacyAccepted
+    }));
+    const orderNumber = checkoutOrderNumberRef.current ||
+      readStoredCheckoutOrderNumber(attemptFingerprint) ||
+      createCheckoutOrderNumber();
+    checkoutOrderNumberRef.current = orderNumber;
+    storeCheckoutAttempt(attemptFingerprint, orderNumber);
     const order = buildCheckoutOrder({
-      customer: {
-        name: checkoutForm.name.trim(),
-        phone: formatRussianPhone(checkoutForm.phone),
-        email: checkoutForm.email.trim().toLowerCase()
-      },
-      delivery: {
-        method: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
-        methodCode: checkoutForm.deliveryMethod,
-        methodLabel: getDeliveryMethodLabel(checkoutForm.deliveryMethod),
-        street: isPickup ? "" : checkoutForm.street.trim(),
-        house: isPickup ? "" : checkoutForm.house.trim(),
-        entrance: isPickup ? "" : checkoutForm.entrance.trim(),
-        apartment: isPickup ? "" : checkoutForm.apartment.trim(),
-        floor: isPickup ? "" : checkoutForm.floor.trim(),
-        comment: checkoutForm.comment.trim()
-      },
+      orderNumber,
+      customer,
+      delivery,
       deliveryTime,
       cart,
       totalAmount: subtotal,
@@ -357,22 +442,36 @@ export function CartDrawer({
     try {
       const createdOrder = await createCheckoutOrder(order);
 
-      console.info("Chef's Choice checkout order", createdOrder);
       const redirectUrl = createdOrder.payment?.redirectUrl;
 
-      if (redirectUrl) {
-        window.location.assign(redirectUrl);
+      if (createdOrder.paymentStatus === "paid") {
+        clearStoredCheckoutAttempt();
+        window.location.assign(`/payment?order=${encodeURIComponent(createdOrder.orderNumber || createdOrder.id)}`);
         return;
       }
 
-      if (createdOrder.paymentStatus === "paid") {
-        window.location.assign(`/payment?order=${encodeURIComponent(createdOrder.orderNumber || createdOrder.id)}`);
+      if (
+        createdOrder.paymentStatus === "cancelled" ||
+        createdOrder.paymentStatus === "failed" ||
+        createdOrder.paymentStatus === "refunded"
+      ) {
+        checkoutOrderNumberRef.current = "";
+        clearStoredCheckoutAttempt();
+      }
+
+      if (createdOrder.paymentStatus === "pending" && redirectUrl) {
+        clearStoredCheckoutAttempt();
+        window.location.assign(redirectUrl);
         return;
       }
 
       throw new Error("YooKassa did not return a payment confirmation URL.");
     } catch (error) {
       if (error instanceof CreateCheckoutOrderError) {
+        if (error.fieldErrors.orderNumber) {
+          checkoutOrderNumberRef.current = "";
+          clearStoredCheckoutAttempt();
+        }
         setSubmitError(error.message);
         setCheckoutErrors((current) => ({
           ...current,
@@ -389,14 +488,24 @@ export function CartDrawer({
 
   return (
     <div className={`cartLayer ${isOpen ? "isOpen" : ""}`} aria-hidden={!isOpen}>
-      <button className="cartBackdrop" type="button" onClick={onClose} />
+      <button
+        className="cartBackdrop"
+        type="button"
+        onClick={onClose}
+        disabled={isSubmittingOrder}
+      />
       <aside className="cartPanel" aria-label="Корзина">
         <div className="cartHeader">
           <div>
             <span>Ваш заказ</span>
             <strong>{formatPrice(subtotal)}</strong>
           </div>
-          <button className="iconButton" type="button" onClick={onClose}>
+          <button
+            className="iconButton"
+            type="button"
+            onClick={onClose}
+            disabled={isSubmittingOrder}
+          >
             <CloseIcon />
           </button>
         </div>
@@ -421,6 +530,7 @@ export function CartDrawer({
                     <div className="stepper" aria-label={`Количество ${item.name}`}>
                       <button
                         type="button"
+                        disabled={isSubmittingOrder}
                         onClick={() => {
                           setSubmittedOrder(null);
                           onRemove(item.cartKey);
@@ -431,6 +541,7 @@ export function CartDrawer({
                       <span>{item.quantity}</span>
                       <button
                         type="button"
+                        disabled={isSubmittingOrder}
                         onClick={() => {
                           setSubmittedOrder(null);
                           onAdd(item.cartKey);

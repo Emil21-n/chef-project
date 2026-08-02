@@ -77,6 +77,7 @@ export type CheckoutOrder = {
 };
 
 export type BuildCheckoutOrderInput = {
+  orderNumber: string;
   customer: CheckoutCustomer;
   delivery: CheckoutDelivery;
   deliveryTime: string;

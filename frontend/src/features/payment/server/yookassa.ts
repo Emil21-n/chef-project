@@ -4,6 +4,7 @@ import type { CheckoutOrderItem } from "@/features/checkout/model/types";
 
 const YOOKASSA_API_URL = "https://api.yookassa.ru/v3";
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_REQUEST_ATTEMPTS = 3;
 
 type YooKassaAmount = {
   value: string;
@@ -140,21 +141,42 @@ async function requestYooKassa<T>(
     headers.set("Idempotence-Key", idempotenceKey);
   }
 
-  const response = await fetch(`${YOOKASSA_API_URL}${path}`, {
-    ...init,
-    headers,
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-  });
+  const canRetry = init.method !== "POST" || Boolean(idempotenceKey);
 
-  if (!response.ok) {
+  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    let response: Response;
+
+    try {
+      response = await fetch(`${YOOKASSA_API_URL}${path}`, {
+        ...init,
+        headers,
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      });
+    } catch (error) {
+      if (!canRetry || attempt === MAX_REQUEST_ATTEMPTS) throw error;
+
+      await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
+      continue;
+    }
+
+    if (response.ok) {
+      return (await response.json()) as T;
+    }
+
+    if (canRetry && attempt < MAX_REQUEST_ATTEMPTS && response.status >= 500) {
+      await response.arrayBuffer().catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
+      continue;
+    }
+
     throw new YooKassaRequestError(
       `YooKassa request failed: ${response.status} ${await readErrorMessage(response)}`,
       response.status
     );
   }
 
-  return (await response.json()) as T;
+  throw new Error("YooKassa request retry loop exited unexpectedly.");
 }
 
 export async function createYooKassaPayment(input: CreatePaymentInput) {

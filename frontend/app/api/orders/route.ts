@@ -12,9 +12,15 @@ import type {
 import {
   createYooKassaPayment,
   getCheckoutOrderStatus,
-  getCheckoutPaymentStatus
+  getCheckoutPaymentStatus,
+  getYooKassaPayment
 } from "@/features/payment/server/yookassa";
-import { reconcileYooKassaPayment } from "@/features/payment/server/payment-orders";
+import {
+  buildStoredOrder,
+  findOrderByNumber,
+  OrderNotificationError,
+  reconcileYooKassaPayment
+} from "@/features/payment/server/payment-orders";
 import {
   booleanValue,
   fetchFromStrapi,
@@ -39,6 +45,7 @@ const CURRENCY = "RUB";
 const SOURCE = "web";
 const MAX_ITEMS = 50;
 const MAX_QUANTITY = 99;
+const checkoutLocks = new Map<string, Promise<unknown>>();
 
 type FieldErrors = Record<string, string>;
 
@@ -55,6 +62,7 @@ type DraftItem = {
 };
 
 type NormalizedDraft = {
+  orderNumber: string;
   customer: {
     name: string;
     phone: string;
@@ -78,6 +86,21 @@ type NormalizedDraft = {
 
 function jsonError(message: string, status = 400, fieldErrors: FieldErrors = {}) {
   return NextResponse.json({ message, fieldErrors }, { status });
+}
+
+async function withCheckoutLock<T>(orderNumber: string, task: () => Promise<T>): Promise<T> {
+  const previous = checkoutLocks.get(orderNumber) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(task);
+
+  checkoutLocks.set(orderNumber, next);
+
+  try {
+    return await next;
+  } finally {
+    if (checkoutLocks.get(orderNumber) === next) {
+      checkoutLocks.delete(orderNumber);
+    }
+  }
 }
 
 function readObject(value: unknown): StrapiRecord | null {
@@ -139,6 +162,7 @@ function normalizeDraft(value: unknown) {
   const methodCode = normalizeDeliveryMethod(delivery?.methodCode, deliveryLabel);
   const deliveryTime = trimString(record.deliveryTime, 120);
   const privacyAgreement = record.privacyAgreement === true;
+  const orderNumber = trimString(record.orderNumber, 48).toUpperCase();
   const normalizedItems = items.flatMap((item, index): DraftItem[] => {
     const itemRecord = readObject(item);
     const productId = trimString(itemRecord?.productId, 120);
@@ -166,6 +190,9 @@ function normalizeDraft(value: unknown) {
   });
 
   if (!name) errors["customer.name"] = "Укажите имя.";
+  if (!/^CC-\d{8}-(?:[A-F0-9]{8}|[A-F0-9]{32})$/.test(orderNumber)) {
+    errors.orderNumber = "Некорректный идентификатор попытки заказа.";
+  }
   if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
     errors["customer.phone"] = "Введите телефон в формате +7 (000) 000-00-00.";
   }
@@ -186,6 +213,7 @@ function normalizeDraft(value: unknown) {
   if (Object.keys(errors).length) return { errors };
 
   const normalized: NormalizedDraft = {
+    orderNumber,
     customer: {
       name,
       phone,
@@ -332,14 +360,6 @@ async function getCatalogSnapshot() {
   };
 }
 
-function createOrderNumber() {
-  const date = new Date();
-  const datePart = date.toISOString().slice(0, 10).replace(/-/g, "");
-  const suffix = crypto.randomUUID().slice(0, 8).toUpperCase();
-
-  return `CC-${datePart}-${suffix}`;
-}
-
 function buildValidatedItems(
   draftItems: DraftItem[],
   productsById: Map<string, OrderProduct>
@@ -422,6 +442,153 @@ function buildOrderResponse(
   };
 }
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${canonicalJson(entryValue)}`);
+
+    return `{${entries.join(",")}}`;
+  }
+
+  return JSON.stringify(value) ?? "null";
+}
+
+function buildOrderDelivery(draft: NormalizedDraft["delivery"]) {
+  return {
+    method: draft.methodLabel,
+    methodCode: draft.methodCode,
+    methodLabel: draft.methodLabel,
+    street: draft.street,
+    house: draft.house,
+    entrance: draft.entrance,
+    apartment: draft.apartment,
+    floor: draft.floor,
+    comment: draft.comment
+  };
+}
+
+function comparableItems(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value.map((item) => {
+    const record = readObject(item);
+
+    return {
+      productId: stringValue(record?.productId),
+      quantity: numberValue(record?.quantity),
+      selectedOptions: readSelectedOptions(record?.selectedOptions).map((option) => ({
+        groupId: option.groupId,
+        optionId: option.optionId
+      }))
+    };
+  });
+}
+
+function matchesExistingDraft(record: StrapiRecord, draft: NormalizedDraft) {
+  const pricingSnapshot = readObject(record.pricingSnapshot);
+
+  return (
+    stringValue(record.orderNumber) === draft.orderNumber &&
+    stringValue(record.deliveryTime) === draft.deliveryTime &&
+    record.privacyAgreement === draft.privacyAgreement &&
+    canonicalJson(record.customer) === canonicalJson(draft.customer) &&
+    canonicalJson(record.delivery) === canonicalJson(buildOrderDelivery(draft.delivery)) &&
+    canonicalJson(comparableItems(record.items)) === canonicalJson(comparableItems(draft.items)) &&
+    (
+      draft.frontendTotalAmount <= 0 ||
+      numberValue(pricingSnapshot?.frontendTotalAmount) === draft.frontendTotalAmount
+    )
+  );
+}
+
+async function ensureYooKassaPayment(
+  savedRecord: StrapiRecord,
+  savedOrder: CheckoutOrder,
+  responseStatus: 200 | 201
+) {
+  const orderNumber = savedOrder.orderNumber || savedOrder.id;
+  const orderDocumentId = savedOrder.strapiDocumentId;
+
+  if (!orderDocumentId) {
+    throw new Error("Strapi did not return an order document id.");
+  }
+
+  const existingPayment = readObject(savedRecord.payment);
+  const existingPaymentId = stringValue(existingPayment?.externalPaymentId);
+
+  if (existingPaymentId) {
+    const currentPayment = await getYooKassaPayment(existingPaymentId);
+    const resumedOrder = await reconcileForCheckout(currentPayment, orderNumber);
+
+    return NextResponse.json({ order: resumedOrder });
+  }
+
+  const yooKassaPayment = await createYooKassaPayment({
+    orderNumber,
+    orderDocumentId,
+    customer: {
+      email: savedOrder.customer.email
+    },
+    items: savedOrder.items,
+    totalAmount: savedOrder.totalAmount
+  });
+  const paymentStatus = getCheckoutPaymentStatus(yooKassaPayment);
+  const orderStatus = getCheckoutOrderStatus(yooKassaPayment);
+  const payment = {
+    provider: "yookassa" as const,
+    status: paymentStatus,
+    redirectUrl: yooKassaPayment.confirmation?.confirmation_url || null,
+    externalPaymentId: yooKassaPayment.id,
+    test: yooKassaPayment.test,
+    receiptRegistration: yooKassaPayment.receipt_registration || null,
+    createdAt: yooKassaPayment.created_at || savedOrder.createdAt
+  };
+
+  await fetchFromStrapi(`/api/orders/${encodeURIComponent(orderDocumentId)}`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({
+      data: {
+        orderStatus,
+        paymentStatus,
+        paymentProvider: "yookassa",
+        payment
+      }
+    })
+  });
+
+  savedOrder.status = orderStatus;
+  savedOrder.paymentStatus = paymentStatus;
+  savedOrder.payment = payment;
+
+  if (paymentStatus === "paid") {
+    savedOrder = await reconcileForCheckout(yooKassaPayment, orderNumber);
+  }
+
+  return NextResponse.json({ order: savedOrder }, { status: responseStatus });
+}
+
+async function reconcileForCheckout(
+  payment: Awaited<ReturnType<typeof getYooKassaPayment>>,
+  orderNumber: string
+) {
+  try {
+    return await reconcileYooKassaPayment(payment);
+  } catch (error) {
+    if (error instanceof OrderNotificationError) {
+      const record = await findOrderByNumber(orderNumber);
+
+      if (record) return buildStoredOrder(record);
+    }
+
+    throw error;
+  }
+}
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -438,6 +605,23 @@ export async function POST(request: Request) {
   }
 
   try {
+    const orderNumber = draftResult.normalized.orderNumber;
+    const existingRecord = await findOrderByNumber(orderNumber);
+
+    if (existingRecord) {
+      return await withCheckoutLock(orderNumber, async () => {
+        const freshRecord = await findOrderByNumber(orderNumber);
+
+        if (!freshRecord || !matchesExistingDraft(freshRecord, draftResult.normalized)) {
+          return jsonError("Эта попытка заказа уже использована. Повторите оформление.", 409, {
+            orderNumber: "Создайте новую попытку заказа."
+          });
+        }
+
+        return ensureYooKassaPayment(freshRecord, buildStoredOrder(freshRecord), 200);
+      });
+    }
+
     const { productsById, minOrder } = await getCatalogSnapshot();
     const { items, errors } = buildValidatedItems(
       draftResult.normalized.items,
@@ -464,23 +648,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const orderNumber = createOrderNumber();
     const createdAt = new Date().toISOString();
     const order: CheckoutOrder = {
       id: orderNumber,
       orderNumber,
       customer: draftResult.normalized.customer,
-      delivery: {
-        method: draftResult.normalized.delivery.methodLabel,
-        methodCode: draftResult.normalized.delivery.methodCode,
-        methodLabel: draftResult.normalized.delivery.methodLabel,
-        street: draftResult.normalized.delivery.street,
-        house: draftResult.normalized.delivery.house,
-        entrance: draftResult.normalized.delivery.entrance,
-        apartment: draftResult.normalized.delivery.apartment,
-        floor: draftResult.normalized.delivery.floor,
-        comment: draftResult.normalized.delivery.comment
-      },
+      delivery: buildOrderDelivery(draftResult.normalized.delivery),
       deliveryTime: draftResult.normalized.deliveryTime,
       items,
       totalAmount,
@@ -496,90 +669,72 @@ export async function POST(request: Request) {
       privacyAgreement: draftResult.normalized.privacyAgreement,
       createdAt
     };
-    const createResponse = await fetchFromStrapi("/api/orders", undefined, {
-      method: "POST",
-      body: JSON.stringify({
-        data: {
-          orderNumber,
-          orderStatus: "created",
-          paymentStatus: "unpaid",
-          paymentProvider: "none",
-          currency: CURRENCY,
-          totalAmount,
-          customer: order.customer,
-          delivery: order.delivery,
-          deliveryTime: order.deliveryTime,
-          items,
-          pricingSnapshot: {
-            itemSubtotal: totalAmount,
-            deliveryFee: 0,
-            discountTotal: 0,
-            minOrder,
-            frontendTotalAmount: draftResult.normalized.frontendTotalAmount,
-            validatedAt: createdAt
-          },
-          privacyAgreement: order.privacyAgreement,
-          source: SOURCE,
-          payment: order.payment
+    return await withCheckoutLock(orderNumber, async () => {
+      const existingRecord = await findOrderByNumber(orderNumber);
+
+      if (existingRecord && !matchesExistingDraft(existingRecord, draftResult.normalized)) {
+        return jsonError("Эта попытка заказа уже использована. Повторите оформление.", 409, {
+          orderNumber: "Создайте новую попытку заказа."
+        });
+      }
+
+      let savedRecord = existingRecord;
+      let reusedExisting = Boolean(existingRecord);
+
+      if (!savedRecord) {
+        try {
+          savedRecord = unwrapRecord(unwrapData(
+            await fetchFromStrapi("/api/orders", undefined, {
+              method: "POST",
+              body: JSON.stringify({
+                data: {
+                  orderNumber,
+                  orderStatus: "created",
+                  paymentStatus: "unpaid",
+                  paymentProvider: "none",
+                  currency: CURRENCY,
+                  totalAmount,
+                  customer: order.customer,
+                  delivery: order.delivery,
+                  deliveryTime: order.deliveryTime,
+                  items,
+                  pricingSnapshot: {
+                    itemSubtotal: totalAmount,
+                    deliveryFee: 0,
+                    discountTotal: 0,
+                    minOrder,
+                    frontendTotalAmount: draftResult.normalized.frontendTotalAmount,
+                    validatedAt: createdAt
+                  },
+                  privacyAgreement: order.privacyAgreement,
+                  source: SOURCE,
+                  payment: order.payment
+                }
+              })
+            })
+          ));
+        } catch (error) {
+          if (!(error instanceof StrapiRequestError) || ![400, 409].includes(error.status)) {
+            throw error;
+          }
+
+          const concurrentRecord = await findOrderByNumber(orderNumber);
+
+          if (!concurrentRecord || !matchesExistingDraft(concurrentRecord, draftResult.normalized)) {
+            throw error;
+          }
+
+          savedRecord = concurrentRecord;
+          reusedExisting = true;
         }
-      })
+      }
+
+      const savedOrder = reusedExisting
+        ? buildStoredOrder(savedRecord)
+        : buildOrderResponse(savedRecord, order);
+
+      return ensureYooKassaPayment(savedRecord, savedOrder, reusedExisting ? 200 : 201);
     });
-    const savedRecord = unwrapRecord(unwrapData(createResponse));
-
-    const savedOrder = buildOrderResponse(savedRecord, order);
-    const orderDocumentId = savedOrder.strapiDocumentId;
-
-    if (!orderDocumentId) {
-      throw new Error("Strapi did not return an order document id.");
-    }
-
-    const yooKassaPayment = await createYooKassaPayment({
-      orderNumber,
-      orderDocumentId,
-      customer: {
-        email: savedOrder.customer.email
-      },
-      items: savedOrder.items,
-      totalAmount: savedOrder.totalAmount
-    });
-    const paymentStatus = getCheckoutPaymentStatus(yooKassaPayment);
-    const orderStatus = getCheckoutOrderStatus(yooKassaPayment);
-    const payment = {
-      provider: "yookassa" as const,
-      status: paymentStatus,
-      redirectUrl: yooKassaPayment.confirmation?.confirmation_url || null,
-      externalPaymentId: yooKassaPayment.id,
-      test: yooKassaPayment.test,
-      receiptRegistration: yooKassaPayment.receipt_registration || null,
-      createdAt: yooKassaPayment.created_at || createdAt
-    };
-
-    await fetchFromStrapi(`/api/orders/${encodeURIComponent(orderDocumentId)}`, undefined, {
-      method: "PUT",
-      body: JSON.stringify({
-        data: {
-          orderStatus,
-          paymentStatus,
-          paymentProvider: "yookassa",
-          payment
-        }
-      })
-    });
-
-    savedOrder.status = orderStatus;
-    savedOrder.paymentStatus = paymentStatus;
-    savedOrder.payment = payment;
-
-    if (paymentStatus === "paid") {
-      await reconcileYooKassaPayment(yooKassaPayment);
-    }
-
-    return NextResponse.json(
-      {
-        order: savedOrder
-      },
-      { status: 201 }
-    );
   } catch (error) {
     if (
       error instanceof StrapiRequestError &&

@@ -2284,12 +2284,22 @@ svg {
   text-transform: uppercase;
 }
 
-.paymentResultCard.is-paid {
+.paymentResultCard.is-paid,
+.paymentResultCard.is-paid-test {
   border-color: rgba(87, 211, 145, 0.42);
 }
 
-.paymentResultCard.is-paid > span {
+.paymentResultCard.is-paid > span,
+.paymentResultCard.is-paid-test > span {
   color: var(--ok);
+}
+
+.paymentResultCard.is-paid-delayed {
+  border-color: rgba(255, 193, 7, 0.48);
+}
+
+.paymentResultCard.is-paid-delayed > span {
+  color: #ffd166;
 }
 
 .paymentResultCard h1,

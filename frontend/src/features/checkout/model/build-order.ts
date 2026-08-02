@@ -3,14 +3,15 @@ import type {
   CheckoutOrder
 } from "@/features/checkout/model/types";
 
-function createTemporaryOrderId() {
-  const timestamp = Date.now().toString(36);
-  const suffix = Math.random().toString(36).slice(2, 8);
+export function createCheckoutOrderNumber() {
+  const datePart = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const suffix = crypto.randomUUID().replaceAll("-", "").toUpperCase();
 
-  return `temp-${timestamp}-${suffix}`;
+  return `CC-${datePart}-${suffix}`;
 }
 
 export function buildCheckoutOrder({
+  orderNumber,
   customer,
   delivery,
   deliveryTime,
@@ -19,7 +20,8 @@ export function buildCheckoutOrder({
   privacyAgreement
 }: BuildCheckoutOrderInput): CheckoutOrder {
   return {
-    id: createTemporaryOrderId(),
+    id: orderNumber,
+    orderNumber,
     customer,
     delivery,
     deliveryTime,

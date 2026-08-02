@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-type PaymentState = "checking" | "pending" | "paid" | "cancelled" | "failed";
+type PaymentState =
+  | "checking"
+  | "pending"
+  | "paid"
+  | "paid-test"
+  | "paid-delayed"
+  | "cancelled"
+  | "failed";
 
 type PaymentResultProps = {
   orderNumber: string;
@@ -10,6 +17,7 @@ type PaymentResultProps = {
 
 type StatusPayload = {
   paymentStatus?: string;
+  notificationStatus?: string;
 };
 
 const MAX_ATTEMPTS = 15;
@@ -38,7 +46,13 @@ export function PaymentResult({ orderNumber }: PaymentResultProps) {
         if (cancelled) return;
 
         if (payload.paymentStatus === "paid") {
-          setState("paid");
+          setState(
+            payload.notificationStatus === "sent"
+              ? "paid"
+              : payload.notificationStatus === "skipped_test"
+                ? "paid-test"
+                : "paid-delayed"
+          );
           return;
         }
 
@@ -85,6 +99,16 @@ export function PaymentResult({ orderNumber }: PaymentResultProps) {
       title: "Заказ подтверждён",
       text: "Мы получили оплату и передали заказ менеджеру ресторана."
     },
+    "paid-test": {
+      label: "Тестовая оплата прошла",
+      title: "Платёжный сценарий проверен",
+      text: "Тестовый заказ сохранён, но уведомление ресторану намеренно не отправлялось."
+    },
+    "paid-delayed": {
+      label: "Оплата прошла",
+      title: "Уведомление задерживается",
+      text: "Платёж подтверждён, но уведомление ресторана пока не доставлено. Свяжитесь с рестораном и назовите номер заказа."
+    },
     cancelled: {
       label: "Оплата не завершена",
       title: "Платёж отменён",
@@ -105,7 +129,7 @@ export function PaymentResult({ orderNumber }: PaymentResultProps) {
         {orderNumber ? <strong>Заказ {orderNumber}</strong> : null}
         <p>{content.text}</p>
         <div>
-          {(state === "failed" || state === "pending") ? (
+          {(state === "failed" || state === "pending" || state === "paid-delayed") ? (
             <button type="button" onClick={() => window.location.reload()}>
               Проверить ещё раз
             </button>

@@ -245,10 +245,12 @@ export async function sendOrderEmail(order: CheckoutOrder) {
     socketTimeout: 20_000
   });
   const orderNumber = order.orderNumber || order.id;
+  const messageIdOrder = orderNumber.replace(/[^A-Za-z0-9._-]/g, "-");
 
   await transporter.sendMail({
     from: `"Chef's Choice" <${config.user}>`,
     to: config.recipient,
+    messageId: `<order-${messageIdOrder}@chefschoice-turk.ru>`,
     subject: `Новый заказ ${orderNumber} на ${formatPrice(order.totalAmount)}`,
     text: buildText(order),
     html: buildHtml(order)

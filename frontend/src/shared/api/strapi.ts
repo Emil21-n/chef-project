@@ -109,9 +109,11 @@ export async function fetchFromStrapi(
 
   headers.set("Accept", "application/json");
 
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (!token) {
+    throw new Error("Missing STRAPI_API_TOKEN environment variable.");
   }
+
+  headers.set("Authorization", `Bearer ${token}`);
 
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -123,7 +125,8 @@ export async function fetchFromStrapi(
     response = await fetch(`${strapiUrl}${path}`, {
       ...init,
       headers,
-      cache: init.cache ?? "no-store"
+      cache: init.cache ?? "no-store",
+      signal: init.signal ?? AbortSignal.timeout(15_000)
     });
   } catch (error) {
     throw new Error(
