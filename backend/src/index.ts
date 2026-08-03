@@ -3,20 +3,34 @@ const REQUIRED_PRODUCTION_SECRETS = [
   'API_TOKEN_SALT',
   'ADMIN_JWT_SECRET',
   'TRANSFER_TOKEN_SALT',
-  'ENCRYPTION_KEY',
 ] as const;
+const OPTIONAL_PRODUCTION_SECRETS = ['ENCRYPTION_KEY'] as const;
 
 const PLACEHOLDER_PATTERN = /^(?:to-?be-?modified|change-?me|replace(?:-?me|-?with))/i;
 
 function assertProductionConfiguration() {
   if (process.env.NODE_ENV !== 'production') return;
 
-  const invalidSecrets = REQUIRED_PRODUCTION_SECRETS.filter((name) => {
+  const invalidSecrets = [
+    ...REQUIRED_PRODUCTION_SECRETS,
+    ...OPTIONAL_PRODUCTION_SECRETS,
+  ].filter((name) => {
     const value = process.env[name]?.trim() || '';
-    const parts = name === 'APP_KEYS' ? value.split(',').map((part) => part.trim()) : [value];
+    const required = REQUIRED_PRODUCTION_SECRETS.includes(
+      name as (typeof REQUIRED_PRODUCTION_SECRETS)[number]
+    );
 
-    return parts.length < (name === 'APP_KEYS' ? 2 : 1) ||
-      parts.some((part) => part.length < 16 || PLACEHOLDER_PATTERN.test(part));
+    if (!value) return required;
+
+    const parts = name === 'APP_KEYS'
+      ? value
+        .replace(/^\s*\[/, '')
+        .replace(/\]\s*$/, '')
+        .split(',')
+        .map((part) => part.trim().replace(/^["']|["']$/g, ''))
+      : [value];
+
+    return parts.some((part) => !part || PLACEHOLDER_PATTERN.test(part));
   });
 
   if (invalidSecrets.length) {
