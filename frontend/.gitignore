@@ -4,3 +4,4 @@ out
 tsconfig.tsbuildinfo
 .env*
 !.env.example
+!.env.example

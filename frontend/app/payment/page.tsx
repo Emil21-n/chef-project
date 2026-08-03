@@ -1,4 +1,17 @@
+import type { Metadata } from "next";
+
 import { PaymentResult } from "@/features/payment/ui/PaymentResult";
+
+export const metadata: Metadata = {
+  title: "Статус оплаты",
+  description: "Статус оплаты заказа Chef's Choice.",
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+    nosnippet: true
+  }
+};
 
 type PaymentPageProps = {
   searchParams: Promise<{

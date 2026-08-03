@@ -65,6 +65,9 @@ const DELIVERY_TIMING_OPTIONS = [
   { value: "scheduled", label: "Дата и время" }
 ] as const;
 const CHECKOUT_ATTEMPT_STORAGE_KEY = "chefs-choice.checkout-attempt";
+const MAX_SCHEDULE_DAYS = 30;
+const DELIVERY_TIME_MIN = "10:00";
+const DELIVERY_TIME_MAX = "22:45";
 
 function fingerprintCheckoutAttempt(value: string) {
   let first = 0x811c9dc5;
@@ -249,14 +252,32 @@ function validateCheckoutForm(
   if (form.deliveryTiming === "scheduled") {
     const deliveryDate = parseDateInput(form.deliveryDate);
     const today = parseDateInput(getDateInputValue());
+    const maxDate = parseDateInput(
+      getDateInputValue(new Date(Date.now() + MAX_SCHEDULE_DAYS * 24 * 60 * 60 * 1000))
+    );
 
     if (!form.deliveryDate || !deliveryDate) {
       errors.deliveryDate = "Выберите дату доставки.";
     } else if (today && deliveryDate < today) {
       errors.deliveryDate = "Дата доставки не может быть раньше сегодняшней.";
+    } else if (maxDate && deliveryDate > maxDate) {
+      errors.deliveryDate = `Заказ можно запланировать не более чем на ${MAX_SCHEDULE_DAYS} дней вперёд.`;
     }
     if (!form.deliveryTime) {
       errors.deliveryTime = "Выберите время доставки.";
+    } else if (
+      form.deliveryTime < DELIVERY_TIME_MIN ||
+      form.deliveryTime > DELIVERY_TIME_MAX
+    ) {
+      errors.deliveryTime = "Доставка доступна с 10:00 до 23:00.";
+    } else if (deliveryDate) {
+      const scheduledAt = new Date(
+        `${form.deliveryDate}T${form.deliveryTime}:00`
+      ).getTime();
+
+      if (Number.isFinite(scheduledAt) && scheduledAt < Date.now() - 5 * 60 * 1000) {
+        errors.deliveryTime = "Дата и время доставки уже прошли.";
+      }
     }
   }
   if (!form.privacyAccepted) {
@@ -305,6 +326,9 @@ export function CartDrawer({
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const checkoutOrderNumberRef = useRef("");
   const deliveryDateMin = getDateInputValue();
+  const deliveryDateMax = getDateInputValue(
+    new Date(Date.now() + MAX_SCHEDULE_DAYS * 24 * 60 * 60 * 1000)
+  );
   const safeMinOrder = Math.max(minOrder, 1);
   const remaining = Math.max(safeMinOrder - subtotal, 0);
   const canStartCheckout = cart.length > 0 && subtotal >= safeMinOrder;
@@ -787,6 +811,7 @@ export function CartDrawer({
                       type="date"
                       value={checkoutForm.deliveryDate}
                       min={deliveryDateMin}
+                      max={deliveryDateMax}
                       onChange={handleCheckoutChange}
                       aria-invalid={Boolean(checkoutErrors.deliveryDate)}
                     />
@@ -802,6 +827,8 @@ export function CartDrawer({
                       type="time"
                       value={checkoutForm.deliveryTime}
                       step={900}
+                      min={DELIVERY_TIME_MIN}
+                      max={DELIVERY_TIME_MAX}
                       onChange={handleCheckoutChange}
                       aria-invalid={Boolean(checkoutErrors.deliveryTime)}
                     />

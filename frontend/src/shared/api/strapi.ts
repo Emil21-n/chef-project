@@ -1,3 +1,5 @@
+import "server-only";
+
 export type StrapiRecord = Record<string, unknown>;
 
 export class StrapiRequestError extends Error {
@@ -119,18 +121,43 @@ export async function fetchFromStrapi(
     headers.set("Content-Type", "application/json");
   }
 
-  let response: Response;
+  const method = (init.method || "GET").toUpperCase();
+  const maxAttempts = method === "GET" && !init.signal ? 2 : 1;
+  let response: Response | undefined;
+  let lastConnectionError: unknown;
 
-  try {
-    response = await fetch(`${strapiUrl}${path}`, {
-      ...init,
-      headers,
-      cache: init.cache ?? "no-store",
-      signal: init.signal ?? AbortSignal.timeout(15_000)
-    });
-  } catch (error) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      response = await fetch(`${strapiUrl}${path}`, {
+        ...init,
+        headers,
+        cache: init.cache ?? "no-store",
+        signal: init.signal ?? AbortSignal.timeout(12_000)
+      });
+
+      const retryableStatus = response.status === 429 || response.status >= 500;
+
+      if (attempt < maxAttempts && retryableStatus) {
+        await response.body?.cancel();
+        response = undefined;
+        continue;
+      }
+
+      break;
+    } catch (error) {
+      lastConnectionError = error;
+
+      if (attempt === maxAttempts) {
+        throw new Error(
+          `Unable to reach Strapi at ${strapiUrl}${path}: ${describeError(error)}`
+        );
+      }
+    }
+  }
+
+  if (!response) {
     throw new Error(
-      `Unable to reach Strapi at ${strapiUrl}${path}: ${describeError(error)}`
+      `Unable to reach Strapi at ${strapiUrl}${path}: ${describeError(lastConnectionError)}`
     );
   }
 

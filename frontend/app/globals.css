@@ -290,14 +290,16 @@ svg {
   display: grid;
   overflow: hidden;
   isolation: isolate;
-  background-position: center;
-  background-size: cover;
-  transition: background-image 0.5s ease;
+}
+
+.heroBackgroundImage {
+  z-index: 0;
+  object-fit: cover;
 }
 
 .heroStage {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   min-height: inherit;
   place-items: center;
@@ -309,6 +311,7 @@ svg {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   background:
     radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.16), transparent 28%),
     linear-gradient(180deg, rgba(8, 8, 12, 0.26), rgba(8, 8, 12, 0.82)),
@@ -319,6 +322,7 @@ svg {
 .heroOverlay {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background:
     linear-gradient(100deg, rgba(255, 0, 0, 0.18), transparent 56%),
     rgba(0, 0, 0, calc(var(--hero-progress, 0) * 0.22));
@@ -367,6 +371,7 @@ svg {
   z-index: 2;
   display: grid;
   width: min(1180px, calc(100% - 34px));
+  margin: 0;
   gap: 10px;
   pointer-events: none;
   text-align: center;

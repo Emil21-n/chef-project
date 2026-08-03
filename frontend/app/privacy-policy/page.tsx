@@ -1,14 +1,29 @@
 import type { Metadata } from "next";
 
 import { LOGO_URL } from "@/shared/constants/restaurant";
+import { JsonLd } from "@/shared/seo/JsonLd";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/shared/seo/site";
 
 export const metadata: Metadata = {
-  title: "Политика конфиденциальности | Chef's Choice",
+  title: "Политика конфиденциальности",
   description:
-    "Политика в отношении обработки персональных данных посетителей и клиентов Chef's Choice."
+    "Политика в отношении обработки персональных данных посетителей и клиентов Chef's Choice.",
+  alternates: {
+    canonical: "/privacy-policy"
+  },
+  openGraph: {
+    title: `Политика конфиденциальности | ${SITE_NAME}`,
+    description: SITE_DESCRIPTION,
+    type: "website",
+    locale: "ru_RU",
+    siteName: SITE_NAME,
+    url: `${SITE_URL}/privacy-policy`
+  }
 };
 
-const operatorName = "Индивидуальный предприниматель Галандаров Самир Латиф Оглы";
+const operatorName = "Индивидуальный предприниматель Алигаев Салех Надир Оглы";
+const operatorInn = "622908355868";
+const operatorOgrnip = "325620000002670";
 const operatorEmail = "chef.choice@yandex.ru";
 
 const operatorRights = [
@@ -127,8 +142,29 @@ function BulletList({ items }: { items: string[] }) {
 }
 
 export default function PrivacyPolicyPage() {
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "@id": `${SITE_URL}/privacy-policy#breadcrumb`,
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Главная",
+        item: `${SITE_URL}/`
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Политика в отношении обработки персональных данных",
+        item: `${SITE_URL}/privacy-policy`
+      }
+    ]
+  };
+
   return (
     <main className="legalPage">
+      <JsonLd data={breadcrumb} />
       <header className="sectionInner legalTopbar">
         <a className="brand" href="/" aria-label="Chef's Choice">
           <span className="brandLogoWrap">
@@ -160,7 +196,7 @@ export default function PrivacyPolicyPage() {
             с требованиями Федерального закона от 27.07.2006 N 152-ФЗ
             «О персональных данных» и определяет порядок обработки персональных данных
             и меры по обеспечению безопасности персональных данных, предпринимаемые
-            Оператором: {operatorName}.
+            Оператором: {operatorName}, ИНН {operatorInn}, ОГРНИП {operatorOgrnip}.
           </p>
           <p>
             Оператор ставит своей важнейшей целью и условием осуществления деятельности
@@ -233,8 +269,8 @@ export default function PrivacyPolicyPage() {
                 <strong>Персональные данные</strong>
               </div>
               <div className="legalTableCell" role="cell">
-                Имя, номер телефона, адрес доставки, состав заказа и комментарий
-                к заказу, если он указан Пользователем.
+                Имя, номер телефона, адрес электронной почты, адрес доставки,
+                состав заказа и комментарий к заказу, если он указан Пользователем.
               </div>
             </div>
             <div className="legalTableRow" role="row">

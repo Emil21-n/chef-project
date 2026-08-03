@@ -1,0 +1,29 @@
+[Unit]
+Description=Chef Choice Next.js frontend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chefapp
+Group=chefapp
+WorkingDirectory=/srv/chef-project/current
+EnvironmentFile=/etc/chef-project/frontend.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+Environment="NODE_OPTIONS=--max-old-space-size=512 --dns-result-order=ipv4first"
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

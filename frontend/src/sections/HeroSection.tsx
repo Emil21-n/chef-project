@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import Image, { getImageProps } from "next/image";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
 import type { ContactInfo, HeroSlide } from "@/shared/model/restaurant";
@@ -20,6 +21,7 @@ export function HeroSection({
   heroSlides
 }: HeroSectionProps) {
   const sectionRef = useRef<HTMLElement | null>(null);
+  const [videoEnabled, setVideoEnabled] = useState(false);
   const breadSlide =
     heroSlides.find((slide) => /выпеч|пекар|хлеб/i.test(`${slide.title} ${slide.text}`)) ||
     heroSlides[2] ||
@@ -30,6 +32,35 @@ export function HeroSection({
     heroSlides[0];
   const backgroundImage = breadSlide?.image || "";
   const foregroundImage = steakSlide?.image || "";
+  const foregroundPoster = foregroundImage
+    ? getImageProps({
+        alt: "",
+        src: foregroundImage,
+        width: 960,
+        height: 1200,
+        quality: 78
+      }).props.src
+    : undefined;
+
+  useEffect(() => {
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean };
+    }).connection;
+
+    if (connection?.saveData || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const enableVideo = () => setVideoEnabled(true);
+
+    if (document.readyState === "complete") {
+      enableVideo();
+      return;
+    }
+
+    window.addEventListener("load", enableVideo, { once: true });
+    return () => window.removeEventListener("load", enableVideo);
+  }, []);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -76,7 +107,6 @@ export function HeroSection({
   }, []);
 
   const heroStyle = {
-    ...(backgroundImage ? { backgroundImage: `url(${backgroundImage})` } : {}),
     "--hero-progress": 0,
     "--hero-media-width": "320px",
     "--hero-media-height": "390px",
@@ -89,14 +119,26 @@ export function HeroSection({
       className="hero"
       style={heroStyle}
     >
+      {backgroundImage ? (
+        <Image
+          className="heroBackgroundImage"
+          src={backgroundImage}
+          alt=""
+          fill
+          priority
+          quality={78}
+          sizes="100vw"
+          aria-hidden="true"
+        />
+      ) : null}
       <div className="heroOverlay" />
       <div className="heroStage">
         <div className="heroMediaShell" aria-hidden="true">
           <video
             className="heroVideo"
-            src={HERO_VIDEO_SRC}
-            poster={foregroundImage || undefined}
-            autoPlay
+            src={videoEnabled ? HERO_VIDEO_SRC : undefined}
+            poster={foregroundPoster}
+            autoPlay={videoEnabled}
             muted
             loop
             playsInline
@@ -105,10 +147,14 @@ export function HeroSection({
           <div className="heroMediaShade" />
         </div>
 
-        <div className="heroTitleSplit" aria-label="Chef's Choice">
+        <h1
+          className="heroTitleSplit"
+          aria-label="Chef's Choice — доставка турецкой кухни в Москве"
+        >
           <span className="heroTitleWord heroTitleWordLeft">Chef&apos;s</span>
+          {" "}
           <span className="heroTitleWord heroTitleWordRight">Choice</span>
-        </div>
+        </h1>
 
         <div className="heroContent">
           <div className="heroActions">

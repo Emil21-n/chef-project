@@ -236,6 +236,7 @@ export async function sendOrderEmail(order: CheckoutOrder) {
     host: config.host,
     port: config.port,
     secure: config.secure,
+    requireTLS: !config.secure,
     auth: {
       user: config.user,
       pass: config.password

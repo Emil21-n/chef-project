@@ -1,17 +1,52 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL
+} from "@/shared/seo/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Chef's Choice - доставка турецкой кухни",
-  description: "Оригинальные турецкие блюда с доставкой по Москве от 60 минут.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: `%s | ${SITE_NAME}`
+  },
+  applicationName: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  category: "food",
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   openGraph: {
-    title: "Chef's Choice - доставка турецкой кухни",
-    description: "Оригинальные турецкие блюда с доставкой по Москве от 60 минут.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     type: "website",
-    images: [
-      "https://static.tildacdn.com/tild3934-3637-4534-a134-396566346331/photo.png"
-    ]
+    locale: "ru_RU",
+    siteName: SITE_NAME
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1
+    }
   }
+};
+
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#120d0d"
 };
 
 export default function RootLayout({

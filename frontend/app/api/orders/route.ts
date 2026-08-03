@@ -32,6 +32,10 @@ import {
   unwrapData,
   unwrapRecord
 } from "@/shared/api/strapi";
+import {
+  JsonRequestBodyError,
+  readJsonBody
+} from "@/shared/http/read-json-body";
 import type {
   Product,
   ProductOptionGroup,
@@ -45,6 +49,11 @@ const CURRENCY = "RUB";
 const SOURCE = "web";
 const MAX_ITEMS = 50;
 const MAX_QUANTITY = 99;
+const MAX_OPTIONS_PER_ITEM = 10;
+const MAX_ORDER_BODY_BYTES = 64 * 1024;
+const MAX_SCHEDULE_DAYS = 30;
+const DELIVERY_OPEN_MINUTES = 10 * 60;
+const DELIVERY_CLOSE_MINUTES = 23 * 60;
 const checkoutLocks = new Map<string, Promise<unknown>>();
 
 type FieldErrors = Record<string, string>;
@@ -143,6 +152,55 @@ function normalizeDeliveryMethod(value: unknown, label: string): CheckoutDeliver
   return "delivery";
 }
 
+function getDeliveryTimeError(value: string) {
+  if (value === "Как можно скорее") return "";
+
+  const match = value.match(
+    /^(\d{2})\.(\d{2})\.(\d{4}), ([01]\d|2[0-3]):([0-5]\d)$/
+  );
+
+  if (!match) return "Укажите корректные дату и время доставки.";
+
+  const [, rawDay, rawMonth, rawYear, rawHour, rawMinute] = match;
+  const day = Number(rawDay);
+  const month = Number(rawMonth);
+  const year = Number(rawYear);
+  const hour = Number(rawHour);
+  const minute = Number(rawMinute);
+  const dateOnly = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    dateOnly.getUTCFullYear() !== year ||
+    dateOnly.getUTCMonth() !== month - 1 ||
+    dateOnly.getUTCDate() !== day
+  ) {
+    return "Укажите корректную дату доставки.";
+  }
+
+  const minutesSinceMidnight = hour * 60 + minute;
+
+  if (
+    minutesSinceMidnight < DELIVERY_OPEN_MINUTES ||
+    minutesSinceMidnight >= DELIVERY_CLOSE_MINUTES
+  ) {
+    return "Доставка доступна с 10:00 до 23:00.";
+  }
+
+  // Moscow has used a fixed UTC+3 offset since 2014.
+  const scheduledAt = Date.UTC(year, month - 1, day, hour - 3, minute);
+  const now = Date.now();
+
+  if (scheduledAt < now - 5 * 60 * 1000) {
+    return "Дата и время доставки уже прошли.";
+  }
+
+  if (scheduledAt > now + MAX_SCHEDULE_DAYS * 24 * 60 * 60 * 1000) {
+    return `Заказ можно запланировать не более чем на ${MAX_SCHEDULE_DAYS} дней вперёд.`;
+  }
+
+  return "";
+}
+
 function normalizeDraft(value: unknown) {
   const errors: FieldErrors = {};
   const record = readObject(value);
@@ -167,6 +225,9 @@ function normalizeDraft(value: unknown) {
     const itemRecord = readObject(item);
     const productId = trimString(itemRecord?.productId, 120);
     const quantity = numberValue(itemRecord?.quantity);
+    const selectedOptions = Array.isArray(itemRecord?.selectedOptions)
+      ? itemRecord.selectedOptions
+      : [];
 
     if (!productId) {
       errors[`items.${index}.productId`] = "Не удалось определить позицию заказа.";
@@ -176,7 +237,17 @@ function normalizeDraft(value: unknown) {
       errors[`items.${index}.quantity`] = "Некорректное количество позиции.";
     }
 
-    if (!productId || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
+    if (selectedOptions.length > MAX_OPTIONS_PER_ITEM) {
+      errors[`items.${index}.selectedOptions`] = "Слишком много опций позиции.";
+    }
+
+    if (
+      !productId ||
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > MAX_QUANTITY ||
+      selectedOptions.length > MAX_OPTIONS_PER_ITEM
+    ) {
       return [];
     }
 
@@ -184,7 +255,7 @@ function normalizeDraft(value: unknown) {
       {
         productId,
         quantity,
-        selectedOptions: readSelectedOptions(itemRecord?.selectedOptions)
+        selectedOptions: readSelectedOptions(selectedOptions)
       }
     ];
   });
@@ -203,7 +274,13 @@ function normalizeDraft(value: unknown) {
     if (!trimString(delivery?.street, 160)) errors["delivery.street"] = "Укажите улицу.";
     if (!trimString(delivery?.house, 40)) errors["delivery.house"] = "Укажите дом.";
   }
-  if (!deliveryTime) errors.deliveryTime = "Укажите время доставки.";
+  if (!deliveryTime) {
+    errors.deliveryTime = "Укажите время доставки.";
+  } else {
+    const deliveryTimeError = getDeliveryTimeError(deliveryTime);
+
+    if (deliveryTimeError) errors.deliveryTime = deliveryTimeError;
+  }
   if (!privacyAgreement) {
     errors.privacyAgreement = "Подтвердите согласие с политикой конфиденциальности.";
   }
@@ -593,8 +670,12 @@ export async function POST(request: Request) {
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
+    body = await readJsonBody(request, MAX_ORDER_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof JsonRequestBodyError) {
+      return jsonError(error.message, error.status);
+    }
+
     return jsonError("Некорректный JSON заказа.");
   }
 

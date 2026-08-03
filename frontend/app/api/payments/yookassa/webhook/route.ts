@@ -8,6 +8,10 @@ import {
   getYooKassaPayment,
   getYooKassaRefund
 } from "@/features/payment/server/yookassa";
+import {
+  JsonRequestBodyError,
+  readJsonBody
+} from "@/shared/http/read-json-body";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,12 +25,18 @@ type WebhookBody = {
   };
 };
 
+const MAX_WEBHOOK_BODY_BYTES = 32 * 1024;
+
 export async function POST(request: Request) {
   let body: WebhookBody;
 
   try {
-    body = (await request.json()) as WebhookBody;
-  } catch {
+    body = await readJsonBody<WebhookBody>(request, MAX_WEBHOOK_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof JsonRequestBodyError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+
     return NextResponse.json({ message: "Invalid JSON." }, { status: 400 });
   }
 

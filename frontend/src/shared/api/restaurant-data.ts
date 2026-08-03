@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import type {
   ContactInfo,
   HeroSlide,
@@ -20,25 +22,10 @@ import {
   unwrapRecord
 } from "@/shared/api/strapi";
 
-const EMPTY_CONTACT_INFO: ContactInfo = {
-  phone: "",
-  phoneHref: "",
-  whatsapp: "",
-  instagram: "",
-  email: "",
-  address: "",
-  hours: "",
-  deliveryHours: "",
-  mapEmbed: "about:blank",
-  mapUrl: "",
-  requisites: []
-};
-
-const EMPTY_RESTAURANT_DATA: RestaurantData = {
-  menuSections: [],
-  heroSlides: [],
-  contactInfo: EMPTY_CONTACT_INFO,
-  minOrder: 0
+const CONTACT_HOSTS = {
+  instagram: ["instagram.com"],
+  map: ["yandex.ru", "yandex.com"],
+  whatsapp: ["wa.me", "whatsapp.com"]
 };
 
 function stringArrayValue(value: unknown) {
@@ -91,6 +78,43 @@ function resolveStrapiUrl(value: string, strapiUrl: string) {
   } catch {
     return value;
   }
+}
+
+function isAllowedHost(hostname: string, allowedHosts: string[]) {
+  const normalizedHostname = hostname.toLowerCase();
+
+  return allowedHosts.some(
+    (allowedHost) =>
+      normalizedHostname === allowedHost || normalizedHostname.endsWith(`.${allowedHost}`)
+  );
+}
+
+function readAllowedHttpsUrl(value: unknown, allowedHosts: string[], fallback = "") {
+  const rawValue = stringValue(value).trim();
+
+  if (!rawValue) return fallback;
+
+  try {
+    const url = new URL(rawValue);
+
+    return url.protocol === "https:" && isAllowedHost(url.hostname, allowedHosts)
+      ? url.toString()
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function readPhoneHref(value: unknown) {
+  const phoneHref = stringValue(value).trim();
+
+  return /^tel:\+?\d{7,15}$/.test(phoneHref) ? phoneHref : "#contacts";
+}
+
+function readEmail(value: unknown) {
+  const email = stringValue(value).trim().toLowerCase();
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
 }
 
 function readMediaUrl(value: unknown, strapiUrl: string): string {
@@ -172,15 +196,15 @@ function mapHeroSlide(record: StrapiRecord, strapiUrl: string): HeroSlide {
 function mapContactInfo(record: StrapiRecord): ContactInfo {
   return {
     phone: stringValue(record.phone),
-    phoneHref: stringValue(record.phoneHref),
-    whatsapp: stringValue(record.whatsapp),
-    instagram: stringValue(record.instagram),
-    email: stringValue(record.email),
+    phoneHref: readPhoneHref(record.phoneHref),
+    whatsapp: readAllowedHttpsUrl(record.whatsapp, CONTACT_HOSTS.whatsapp, "#contacts"),
+    instagram: readAllowedHttpsUrl(record.instagram, CONTACT_HOSTS.instagram, "#contacts"),
+    email: readEmail(record.email),
     address: stringValue(record.address),
     hours: stringValue(record.hours),
     deliveryHours: stringValue(record.deliveryHours),
-    mapEmbed: stringValue(record.mapEmbed),
-    mapUrl: stringValue(record.mapUrl),
+    mapEmbed: readAllowedHttpsUrl(record.mapEmbed, CONTACT_HOSTS.map, "about:blank"),
+    mapUrl: readAllowedHttpsUrl(record.mapUrl, CONTACT_HOSTS.map, "#contacts"),
     requisites: stringArrayValue(record.requisites)
   };
 }
@@ -267,11 +291,29 @@ async function getRestaurantDataFromStrapi(): Promise<RestaurantData> {
   };
 }
 
+const getCachedRestaurantDataFromStrapi = unstable_cache(
+  getRestaurantDataFromStrapi,
+  ["chef-choice-restaurant-data-v1"],
+  {
+    revalidate: 60,
+    tags: ["restaurant-data"]
+  }
+);
+let lastKnownGoodRestaurantData: RestaurantData | null = null;
+
 export async function getRestaurantData(): Promise<RestaurantData> {
   try {
-    return await getRestaurantDataFromStrapi();
+    const data = await getCachedRestaurantDataFromStrapi();
+
+    lastKnownGoodRestaurantData = data;
+    return data;
   } catch (error) {
     console.error(`Unable to load Strapi restaurant data: ${describeError(error)}`);
-    return EMPTY_RESTAURANT_DATA;
+
+    if (lastKnownGoodRestaurantData) {
+      return lastKnownGoodRestaurantData;
+    }
+
+    throw error;
   }
 }
